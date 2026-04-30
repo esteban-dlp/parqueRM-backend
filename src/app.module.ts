@@ -15,6 +15,14 @@ import { HealthModule } from './health/health.module';
 import { ParkConfigModule } from './park-config/park-config.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { TariffsModule } from './tariffs/tariffs.module';
+import { VisitorsModule } from './visitors/visitors.module';
+import { VehiclesModule } from './vehicles/vehicles.module';
+import { LodgingModule } from './lodging/lodging.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ReceiptsModule } from './receipts/receipts.module';
+import { CashModule } from './cash/cash.module';
+import { ReportsModule } from './reports/reports.module';
+import { PrintsModule } from './prints/prints.module';
 
 @Module({
   imports: [
@@ -42,6 +50,14 @@ import { TariffsModule } from './tariffs/tariffs.module';
     ParkConfigModule,
     CatalogsModule,
     TariffsModule,
+    VisitorsModule,
+    VehiclesModule,
+    LodgingModule,
+    DashboardModule,
+    ReceiptsModule,
+    CashModule,
+    ReportsModule,
+    PrintsModule,
   ],
   providers: [
     {

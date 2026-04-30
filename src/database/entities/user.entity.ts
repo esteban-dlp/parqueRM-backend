@@ -1,4 +1,10 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Role } from './role.entity';
 
 @Entity({ name: 'users' })
@@ -16,7 +22,12 @@ export class User {
   @Column({ name: 'username', type: 'nvarchar', length: 80, unique: true })
   username!: string;
 
-  @Column({ name: 'password_hash', type: 'nvarchar', length: 255, select: false })
+  @Column({
+    name: 'password_hash',
+    type: 'nvarchar',
+    length: 255,
+    select: false,
+  })
   passwordHash!: string;
 
   @Column({ name: 'full_name', type: 'nvarchar', length: 150 })
@@ -31,7 +42,11 @@ export class User {
   @Column({ name: 'last_login_at', type: 'datetime2', nullable: true })
   lastLoginAt!: Date | null;
 
-  @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({
+    name: 'created_at',
+    type: 'datetime2',
+    default: () => 'SYSDATETIME()',
+  })
   createdAt!: Date;
 
   @Column({ name: 'updated_at', type: 'datetime2', nullable: true })

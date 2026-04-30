@@ -1,16 +1,14 @@
-import {
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../database/entities/user.entity';
+import { Role } from '../database/entities/role.entity';
 import { AuditService } from '../audit/audit.service';
 import { ResponseCodes } from '../common/constants/response-codes';
+import { SignupDto } from './dto/signup.dto';
 
 export interface LoginResult {
   accessToken: string;
@@ -32,12 +30,72 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepo: Repository<Role>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
   ) {}
 
-  async login(username: string, password: string, ip?: string): Promise<LoginResult> {
+  async signup(dto: SignupDto, ip?: string): Promise<LoginResult> {
+    const existing = await this.userRepo.findOne({ where: { username: dto.username } });
+    if (existing) {
+      throw new ConflictException({
+        code: ResponseCodes.CONFLICT,
+        message: 'Username already taken',
+      });
+    }
+
+    let role: Role | null = null;
+    if (dto.roleId) {
+      role = await this.roleRepo.findOne({ where: { id: dto.roleId, isActive: true } });
+      if (!role) {
+        throw new NotFoundException({
+          code: ResponseCodes.NOT_FOUND,
+          message: 'Role not found or inactive',
+        });
+      }
+    } else {
+      role = await this.roleRepo.findOne({ where: { name: 'Consulta', isActive: true } });
+      if (!role) {
+        role = await this.roleRepo.findOne({ where: { isActive: true } });
+      }
+      if (!role) {
+        throw new NotFoundException({
+          code: ResponseCodes.NOT_FOUND,
+          message: 'No active role found to assign. Contact an administrator.',
+        });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const user = this.userRepo.create({
+      username: dto.username,
+      passwordHash,
+      fullName: dto.fullName,
+      email: dto.email ?? null,
+      roleId: role.id,
+      isActive: true,
+    });
+    const saved = await this.userRepo.save(user);
+
+    await this.auditService.record({
+      userId: saved.id,
+      action: 'SIGNUP',
+      entityName: 'users',
+      entityId: saved.id,
+      newValues: { username: saved.username, roleId: saved.roleId },
+      ipAddress: ip,
+    });
+
+    return this.login(dto.username, dto.password, ip);
+  }
+
+  async login(
+    username: string,
+    password: string,
+    ip?: string,
+  ): Promise<LoginResult> {
     const user = await this.userRepo.findOne({
       where: { username },
       relations: ['role', 'role.permissions'],

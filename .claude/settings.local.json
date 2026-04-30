@@ -3,7 +3,8 @@
     "allow": [
       "Read(//c/Users/Esteban/OneDrive/PROYECTOS/parqueRM/**)",
       "Read(//c/Users/Esteban/OneDrive/PROYECTOS/parqueRM/parqueRM-root/**)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npm run *)"
     ]
   }
 }

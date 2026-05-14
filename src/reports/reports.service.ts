@@ -49,15 +49,15 @@ export class ReportsService {
       visitorQb.andWhere('vr.recordDate >= :from', { from: query.from });
       vehicleQb.andWhere('vh.checkInAt >= :from', { from: query.from });
       lodgingQb.andWhere('lr.recordDate >= :from', { from: query.from });
-      incomeQb.andWhere('m.movementDate >= :from', { from: query.from });
-      expenseQb.andWhere('m.movementDate >= :from', { from: query.from });
+      incomeQb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
+      expenseQb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
     }
     if (query.to) {
       visitorQb.andWhere('vr.recordDate <= :to', { to: query.to });
       vehicleQb.andWhere('vh.checkInAt <= :to', { to: query.to });
       lodgingQb.andWhere('lr.recordDate <= :to', { to: query.to });
-      incomeQb.andWhere('m.movementDate <= :to', { to: query.to });
-      expenseQb.andWhere('m.movementDate <= :to', { to: query.to });
+      incomeQb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
+      expenseQb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
     }
 
     const [totalVisitors, totalVehicles, totalLodging] = await Promise.all([
@@ -201,8 +201,8 @@ export class ReportsService {
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('m.movementDate >= :from', { from: query.from });
-    if (query.to) qb.andWhere('m.movementDate <= :to', { to: query.to });
+    if (query.from) qb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
+    if (query.to) qb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
     if (query.paymentMethodId) qb.andWhere('m.paymentMethodId = :pmId', { pmId: query.paymentMethodId });
 
     const [data, total] = await qb.getManyAndCount();
@@ -221,8 +221,8 @@ export class ReportsService {
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('m.movementDate >= :from', { from: query.from });
-    if (query.to) qb.andWhere('m.movementDate <= :to', { to: query.to });
+    if (query.from) qb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
+    if (query.to) qb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
     if (query.paymentMethodId) qb.andWhere('m.paymentMethodId = :pmId', { pmId: query.paymentMethodId });
 
     const [data, total] = await qb.getManyAndCount();

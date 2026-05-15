@@ -36,6 +36,21 @@ export class Receipt {
   @JoinColumn({ name: 'payment_method_id' })
   paymentMethod!: PaymentMethod;
 
+  @Column({ name: 'subtotal', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  subtotal!: number | null;
+
+  @Column({ name: 'discount_type', type: 'nvarchar', length: 20, nullable: true })
+  discountType!: 'PERCENTAGE' | 'AMOUNT' | null;
+
+  @Column({ name: 'discount_percentage', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  discountPercentage!: number | null;
+
+  @Column({ name: 'discount_amount', type: 'decimal', precision: 12, scale: 2, nullable: true, default: 0 })
+  discountAmount!: number | null;
+
+  @Column({ name: 'discount_reason', type: 'nvarchar', length: 500, nullable: true })
+  discountReason!: string | null;
+
   @Column({ name: 'total', type: 'decimal', precision: 12, scale: 2 })
   total!: number;
 

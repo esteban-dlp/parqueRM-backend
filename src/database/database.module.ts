@@ -43,6 +43,8 @@ import { FinancialMovement } from './entities/financial-movement.entity';
         database: config.get<string>('database.name'),
         synchronize: false,
         autoLoadEntities: true,
+        retryAttempts: 10,
+        retryDelay: 3000,
         entities: [
           User,
           Role,

@@ -201,9 +201,15 @@ export class CatalogsController {
   @Get('visitor-categories')
   @RequirePermissions('CATALOGS_READ')
   @ApiQuery({ name: 'page', required: false }) @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiOperation({ summary: 'List visitor categories' })
-  async findAllVisitorCategories(@Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.paginated(await this.catalogsService.findAllVisitorCategories(+page, +limit));
+  async findAllVisitorCategories(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('isActive') isActive?: string,
+  ) {
+    const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.paginated(await this.catalogsService.findAllVisitorCategories(+page, +limit, activeFilter));
   }
 
   @Get('visitor-categories/:id')
@@ -249,9 +255,15 @@ export class CatalogsController {
   @Get('vehicle-types')
   @RequirePermissions('CATALOGS_READ')
   @ApiQuery({ name: 'page', required: false }) @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiOperation({ summary: 'List vehicle types' })
-  async findAllVehicleTypes(@Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.paginated(await this.catalogsService.findAllVehicleTypes(+page, +limit));
+  async findAllVehicleTypes(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('isActive') isActive?: string,
+  ) {
+    const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.paginated(await this.catalogsService.findAllVehicleTypes(+page, +limit, activeFilter));
   }
 
   @Get('vehicle-types/:id')
@@ -297,9 +309,15 @@ export class CatalogsController {
   @Get('lodging-types')
   @RequirePermissions('CATALOGS_READ')
   @ApiQuery({ name: 'page', required: false }) @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiOperation({ summary: 'List lodging types' })
-  async findAllLodgingTypes(@Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.paginated(await this.catalogsService.findAllLodgingTypes(+page, +limit));
+  async findAllLodgingTypes(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('isActive') isActive?: string,
+  ) {
+    const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.paginated(await this.catalogsService.findAllLodgingTypes(+page, +limit, activeFilter));
   }
 
   @Get('lodging-types/:id')
@@ -345,9 +363,15 @@ export class CatalogsController {
   @Get('payment-methods')
   @RequirePermissions('CATALOGS_READ')
   @ApiQuery({ name: 'page', required: false }) @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiOperation({ summary: 'List payment methods' })
-  async findAllPaymentMethods(@Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.paginated(await this.catalogsService.findAllPaymentMethods(+page, +limit));
+  async findAllPaymentMethods(
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+    @Query('isActive') isActive?: string,
+  ) {
+    const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.paginated(await this.catalogsService.findAllPaymentMethods(+page, +limit, activeFilter));
   }
 
   @Get('payment-methods/:id')
@@ -395,13 +419,16 @@ export class CatalogsController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'type', required: false, enum: ['INGRESO', 'EGRESO'] })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiOperation({ summary: 'List financial concepts' })
   async findAllFinancialConcepts(
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('type') type?: 'INGRESO' | 'EGRESO',
+    @Query('isActive') isActive?: string,
   ) {
-    return this.paginated(await this.catalogsService.findAllFinancialConcepts(+page, +limit, type));
+    const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.paginated(await this.catalogsService.findAllFinancialConcepts(+page, +limit, type, activeFilter));
   }
 
   @Get('financial-concepts/:id')

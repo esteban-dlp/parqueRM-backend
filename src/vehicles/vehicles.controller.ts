@@ -96,9 +96,10 @@ export class VehiclesController {
   async create(
     @Body() dto: CreateVehicleDto,
     @CurrentUser('id') userId: number,
+    @CurrentUser('permissions') userPermissions: string[],
     @Req() req: any,
   ) {
-    const data = await this.vehiclesService.create(dto, userId, req.ip);
+    const data = await this.vehiclesService.create(dto, userId, req.ip, userPermissions ?? []);
     return this.responses.created(data);
   }
 
@@ -109,9 +110,10 @@ export class VehiclesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateVehicleDto,
     @CurrentUser('id') userId: number,
+    @CurrentUser('permissions') userPermissions: string[],
     @Req() req: any,
   ) {
-    const data = await this.vehiclesService.update(id, dto, userId, req.ip);
+    const data = await this.vehiclesService.update(id, dto, userId, req.ip, userPermissions ?? []);
     return this.responses.updated(data);
   }
 

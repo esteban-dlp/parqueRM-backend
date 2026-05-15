@@ -215,8 +215,9 @@ export class CatalogsService {
   }
 
   // ─── Visitor Categories ────────────────────────────────────────────────────
-  findAllVisitorCategories(page = 1, limit = 20) {
-    return this.genericFindAll(this.visitorCategoryRepo, page, limit);
+  findAllVisitorCategories(page = 1, limit = 20, isActive?: boolean) {
+    const where = isActive !== undefined ? ({ isActive } as any) : undefined;
+    return this.genericFindAll(this.visitorCategoryRepo, page, limit, where);
   }
   findVisitorCategoryById(id: number) {
     return this.genericFindById(this.visitorCategoryRepo, id, 'VisitorCategory');
@@ -237,8 +238,9 @@ export class CatalogsService {
   }
 
   // ─── Vehicle Types ─────────────────────────────────────────────────────────
-  findAllVehicleTypes(page = 1, limit = 20) {
-    return this.genericFindAll(this.vehicleTypeRepo, page, limit);
+  findAllVehicleTypes(page = 1, limit = 20, isActive?: boolean) {
+    const where = isActive !== undefined ? ({ isActive } as any) : undefined;
+    return this.genericFindAll(this.vehicleTypeRepo, page, limit, where);
   }
   findVehicleTypeById(id: number) {
     return this.genericFindById(this.vehicleTypeRepo, id, 'VehicleType');
@@ -259,8 +261,9 @@ export class CatalogsService {
   }
 
   // ─── Lodging Types ─────────────────────────────────────────────────────────
-  findAllLodgingTypes(page = 1, limit = 20) {
-    return this.genericFindAll(this.lodgingTypeRepo, page, limit);
+  findAllLodgingTypes(page = 1, limit = 20, isActive?: boolean) {
+    const where = isActive !== undefined ? ({ isActive } as any) : undefined;
+    return this.genericFindAll(this.lodgingTypeRepo, page, limit, where);
   }
   findLodgingTypeById(id: number) {
     return this.genericFindById(this.lodgingTypeRepo, id, 'LodgingType');
@@ -281,8 +284,9 @@ export class CatalogsService {
   }
 
   // ─── Payment Methods ───────────────────────────────────────────────────────
-  findAllPaymentMethods(page = 1, limit = 20) {
-    return this.genericFindAll(this.paymentMethodRepo, page, limit);
+  findAllPaymentMethods(page = 1, limit = 20, isActive?: boolean) {
+    const where = isActive !== undefined ? ({ isActive } as any) : undefined;
+    return this.genericFindAll(this.paymentMethodRepo, page, limit, where);
   }
   findPaymentMethodById(id: number) {
     return this.genericFindById(this.paymentMethodRepo, id, 'PaymentMethod');
@@ -303,9 +307,11 @@ export class CatalogsService {
   }
 
   // ─── Financial Concepts ────────────────────────────────────────────────────
-  findAllFinancialConcepts(page = 1, limit = 20, type?: 'INGRESO' | 'EGRESO') {
-    const where = type ? ({ type } as any) : undefined;
-    return this.genericFindAll(this.financialConceptRepo, page, limit, where);
+  findAllFinancialConcepts(page = 1, limit = 20, type?: 'INGRESO' | 'EGRESO', isActive?: boolean) {
+    const where: any = {};
+    if (type) where.type = type;
+    if (isActive !== undefined) where.isActive = isActive;
+    return this.genericFindAll(this.financialConceptRepo, page, limit, Object.keys(where).length ? where : undefined);
   }
   findFinancialConceptById(id: number) {
     return this.genericFindById(this.financialConceptRepo, id, 'FinancialConcept');

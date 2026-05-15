@@ -78,9 +78,10 @@ export class LodgingController {
   async create(
     @Body() dto: CreateLodgingDto,
     @CurrentUser('id') userId: number,
+    @CurrentUser('permissions') userPermissions: string[],
     @Req() req: any,
   ) {
-    const data = await this.lodgingService.create(dto, userId, req.ip);
+    const data = await this.lodgingService.create(dto, userId, req.ip, userPermissions ?? []);
     return this.responses.created(data);
   }
 
@@ -91,9 +92,10 @@ export class LodgingController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateLodgingDto,
     @CurrentUser('id') userId: number,
+    @CurrentUser('permissions') userPermissions: string[],
     @Req() req: any,
   ) {
-    const data = await this.lodgingService.update(id, dto, userId, req.ip);
+    const data = await this.lodgingService.update(id, dto, userId, req.ip, userPermissions ?? []);
     return this.responses.updated(data);
   }
 

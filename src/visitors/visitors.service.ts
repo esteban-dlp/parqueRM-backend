@@ -6,6 +6,7 @@ import { VisitReason } from '../database/entities/visit-reason.entity';
 import { VisitActivity } from '../database/entities/visit-activity.entity';
 import { VisitorCategory } from '../database/entities/visitor-category.entity';
 import { ParkConfig } from '../database/entities/park-config.entity';
+import { Tariff } from '../database/entities/tariff.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { UpdateVisitorDto } from './dto/update-visitor.dto';
@@ -20,8 +21,16 @@ export class VisitorsService {
     private readonly categoryRepo: Repository<VisitorCategory>,
     @InjectRepository(ParkConfig)
     private readonly parkConfigRepo: Repository<ParkConfig>,
+    @InjectRepository(Tariff)
+    private readonly tariffRepo: Repository<Tariff>,
     private readonly auditService: AuditService,
   ) {}
+
+  private async resolvedTariffAmount(tariffId: number | null): Promise<number | null> {
+    if (!tariffId) return null;
+    const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
+    return tariff?.amount ?? null;
+  }
 
   async findAll(query: QueryVisitorDto) {
     const page = Math.max(1, query.page ?? 1);
@@ -167,19 +176,24 @@ export class VisitorsService {
     return { currentInside, maxCapacity };
   }
 
-  async create(dto: CreateVisitorDto, userId: number, ip: string): Promise<VisitorRecord> {
+  async create(dto: CreateVisitorDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VisitorRecord> {
     const today = new Date().toISOString().slice(0, 10);
     const count = await this.repo.count();
     const sequence = String(count + 1).padStart(5, '0');
     const datePart = today.replace(/-/g, '');
     const ticketNumber = `VIS-${datePart}-${sequence}`;
 
+    const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
+    const appliedRate = canOverrideTariff
+      ? dto.appliedRate
+      : ((await this.resolvedTariffAmount(dto.tariffId ?? null)) ?? dto.appliedRate);
+
     const record = this.repo.create({
       ticketNumber,
       visitorCategoryId: dto.visitorCategoryId,
       quantity: dto.quantity ?? 1,
       tariffId: dto.tariffId ?? null,
-      appliedRate: dto.appliedRate,
+      appliedRate,
       totalAmount: dto.totalAmount,
       recordDate: dto.recordDate ?? today,
       checkInAt: dto.checkInAt ? new Date(dto.checkInAt) : new Date(),
@@ -227,14 +241,20 @@ export class VisitorsService {
     return this.findById(saved.id);
   }
 
-  async update(id: number, dto: UpdateVisitorDto, userId: number, ip: string): Promise<VisitorRecord> {
+  async update(id: number, dto: UpdateVisitorDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VisitorRecord> {
     const record = await this.findById(id);
     const old = { ...record };
+
+    const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
 
     if (dto.visitorCategoryId !== undefined) record.visitorCategoryId = dto.visitorCategoryId;
     if (dto.quantity !== undefined) record.quantity = dto.quantity;
     if (dto.tariffId !== undefined) record.tariffId = dto.tariffId ?? null;
-    if (dto.appliedRate !== undefined) record.appliedRate = dto.appliedRate;
+    if (dto.appliedRate !== undefined) {
+      record.appliedRate = canOverrideTariff
+        ? dto.appliedRate
+        : ((await this.resolvedTariffAmount(record.tariffId)) ?? dto.appliedRate);
+    }
     if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.countryId !== undefined) record.countryId = dto.countryId ?? null;
     if (dto.departmentId !== undefined) record.departmentId = dto.departmentId ?? null;

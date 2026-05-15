@@ -107,9 +107,10 @@ export class VisitorsController {
   async create(
     @Body() dto: CreateVisitorDto,
     @CurrentUser('id') userId: number,
+    @CurrentUser('permissions') userPermissions: string[],
     @Req() req: any,
   ) {
-    const data = await this.visitorsService.create(dto, userId, req.ip);
+    const data = await this.visitorsService.create(dto, userId, req.ip, userPermissions ?? []);
     return this.responses.created(data);
   }
 
@@ -120,9 +121,10 @@ export class VisitorsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateVisitorDto,
     @CurrentUser('id') userId: number,
+    @CurrentUser('permissions') userPermissions: string[],
     @Req() req: any,
   ) {
-    const data = await this.visitorsService.update(id, dto, userId, req.ip);
+    const data = await this.visitorsService.update(id, dto, userId, req.ip, userPermissions ?? []);
     return this.responses.updated(data);
   }
 

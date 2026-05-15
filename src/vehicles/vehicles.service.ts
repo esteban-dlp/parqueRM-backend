@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Like, Repository } from 'typeorm';
 import { VehicleRecord } from '../database/entities/vehicle-record.entity';
+import { Tariff } from '../database/entities/tariff.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
@@ -12,8 +13,16 @@ export class VehiclesService {
   constructor(
     @InjectRepository(VehicleRecord)
     private readonly repo: Repository<VehicleRecord>,
+    @InjectRepository(Tariff)
+    private readonly tariffRepo: Repository<Tariff>,
     private readonly auditService: AuditService,
   ) {}
+
+  private async resolvedTariffAmount(tariffId: number | null): Promise<number | null> {
+    if (!tariffId) return null;
+    const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
+    return tariff?.amount ?? null;
+  }
 
   async findAll(query: QueryVehicleDto) {
     const page = Math.max(1, query.page ?? 1);
@@ -116,13 +125,18 @@ export class VehiclesService {
     };
   }
 
-  async create(dto: CreateVehicleDto, userId: number, ip: string): Promise<VehicleRecord> {
+  async create(dto: CreateVehicleDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VehicleRecord> {
+    const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
+    const appliedRate = canOverrideTariff
+      ? dto.appliedRate
+      : ((await this.resolvedTariffAmount(dto.tariffId ?? null)) ?? dto.appliedRate);
+
     const record = this.repo.create({
       vehicleTypeId: dto.vehicleTypeId,
       visitorRecordId: dto.visitorRecordId ?? null,
       plateNumber: dto.plateNumber ?? null,
       tariffId: dto.tariffId ?? null,
-      appliedRate: dto.appliedRate,
+      appliedRate,
       totalAmount: dto.totalAmount,
       observations: dto.observations ?? null,
       source: dto.source ?? 'MANUAL',
@@ -142,14 +156,20 @@ export class VehiclesService {
     return this.findById(saved.id);
   }
 
-  async update(id: number, dto: UpdateVehicleDto, userId: number, ip: string): Promise<VehicleRecord> {
+  async update(id: number, dto: UpdateVehicleDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VehicleRecord> {
     const record = await this.findById(id);
     const old = { ...record };
+
+    const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
 
     if (dto.vehicleTypeId !== undefined) record.vehicleTypeId = dto.vehicleTypeId;
     if (dto.plateNumber !== undefined) record.plateNumber = dto.plateNumber ?? null;
     if (dto.tariffId !== undefined) record.tariffId = dto.tariffId ?? null;
-    if (dto.appliedRate !== undefined) record.appliedRate = dto.appliedRate;
+    if (dto.appliedRate !== undefined) {
+      record.appliedRate = canOverrideTariff
+        ? dto.appliedRate
+        : ((await this.resolvedTariffAmount(record.tariffId)) ?? dto.appliedRate);
+    }
     if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.observations !== undefined) record.observations = dto.observations ?? null;
     record.updatedAt = new Date();

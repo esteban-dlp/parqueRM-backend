@@ -197,6 +197,20 @@ export class ReceiptsService {
   async create(dto: CreateReceiptDto, userId: number, ip?: string): Promise<Receipt> {
     const receiptNumber = dto.receiptNumber ?? (await this.nextReceiptNumber());
 
+    const subtotalVal = dto.subtotal ?? dto.total;
+    const discountType = dto.discountType ?? null;
+    const discountValue = dto.discountValue ?? null;
+
+    let discountPct: number | null = null;
+    let discountAmt: number | null = dto.discountAmount ?? null;
+
+    if (discountType === 'PERCENTAGE' && discountValue !== null) {
+      discountPct = discountValue;
+      discountAmt = parseFloat((subtotalVal * discountValue / 100).toFixed(2));
+    } else if (discountType === 'AMOUNT' && discountValue !== null) {
+      discountAmt = discountValue;
+    }
+
     const receipt = this.receiptRepo.create({
       receiptNumber,
       contributorName: dto.contributorName ?? null,
@@ -205,6 +219,11 @@ export class ReceiptsService {
       originType: dto.originType,
       originId: dto.originId ?? null,
       paymentMethodId: dto.paymentMethodId,
+      subtotal: dto.subtotal ?? null,
+      discountType,
+      discountPercentage: discountPct,
+      discountAmount: discountAmt,
+      discountReason: dto.discountReason ?? null,
       total: dto.total,
       amountReceived: dto.amountReceived ?? null,
       changeAmount: dto.changeAmount ?? null,
@@ -233,7 +252,13 @@ export class ReceiptsService {
       action: 'CREATE_RECEIPT',
       entityName: 'Receipt',
       entityId: saved.id,
-      newValues: { receiptNumber: saved.receiptNumber, total: saved.total },
+      newValues: {
+        receiptNumber: saved.receiptNumber,
+        subtotal: saved.subtotal,
+        discountPercentage: saved.discountPercentage,
+        discountAmount: saved.discountAmount,
+        total: saved.total,
+      },
       ipAddress: ip,
     });
 

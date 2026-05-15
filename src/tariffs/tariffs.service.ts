@@ -55,11 +55,19 @@ export class TariffsService {
   }
 
   async findByAppliesTo(type: string): Promise<Tariff[]> {
-    return this.tariffRepo.find({
-      where: { appliesTo: type as any, isActive: true },
-      relations: this.relations,
-      order: { name: 'ASC' },
-    });
+    const today = new Date().toISOString().slice(0, 10);
+    return this.tariffRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.service', 'service')
+      .leftJoinAndSelect('t.visitorCategory', 'visitorCategory')
+      .leftJoinAndSelect('t.vehicleType', 'vehicleType')
+      .leftJoinAndSelect('t.lodgingType', 'lodgingType')
+      .where('t.appliesTo = :type', { type })
+      .andWhere('t.isActive = :isActive', { isActive: true })
+      .andWhere('t.validFrom <= :today', { today })
+      .andWhere('(t.validTo IS NULL OR t.validTo >= :today)', { today })
+      .orderBy('t.name', 'ASC')
+      .getMany();
   }
 
   async resolve(
@@ -69,13 +77,17 @@ export class TariffsService {
     lodgingTypeId?: number,
     isForeign?: boolean,
   ): Promise<Tariff | null> {
+    const today = new Date().toISOString().slice(0, 10);
+
     const qb = this.tariffRepo.createQueryBuilder('t')
       .leftJoinAndSelect('t.service', 'service')
       .leftJoinAndSelect('t.visitorCategory', 'visitorCategory')
       .leftJoinAndSelect('t.vehicleType', 'vehicleType')
       .leftJoinAndSelect('t.lodgingType', 'lodgingType')
       .where('t.appliesTo = :appliesTo', { appliesTo })
-      .andWhere('t.isActive = :isActive', { isActive: true });
+      .andWhere('t.isActive = :isActive', { isActive: true })
+      .andWhere('t.validFrom <= :today', { today })
+      .andWhere('(t.validTo IS NULL OR t.validTo >= :today)', { today });
 
     if (categoryId !== undefined) qb.andWhere('(t.visitorCategoryId = :categoryId OR t.visitorCategoryId IS NULL)', { categoryId });
     if (vehicleTypeId !== undefined) qb.andWhere('(t.vehicleTypeId = :vehicleTypeId OR t.vehicleTypeId IS NULL)', { vehicleTypeId });

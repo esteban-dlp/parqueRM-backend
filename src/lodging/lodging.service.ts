@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LodgingRecord } from '../database/entities/lodging-record.entity';
+import { Tariff } from '../database/entities/tariff.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
@@ -12,8 +13,16 @@ export class LodgingService {
   constructor(
     @InjectRepository(LodgingRecord)
     private readonly repo: Repository<LodgingRecord>,
+    @InjectRepository(Tariff)
+    private readonly tariffRepo: Repository<Tariff>,
     private readonly auditService: AuditService,
   ) {}
+
+  private async resolvedTariffAmount(tariffId: number | null): Promise<number | null> {
+    if (!tariffId) return null;
+    const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
+    return tariff?.amount ?? null;
+  }
 
   async findAll(query: QueryLodgingDto) {
     const page = Math.max(1, query.page ?? 1);
@@ -111,7 +120,12 @@ export class LodgingService {
     };
   }
 
-  async create(dto: CreateLodgingDto, userId: number, ip: string): Promise<LodgingRecord> {
+  async create(dto: CreateLodgingDto, userId: number, ip: string, userPermissions: string[] = []): Promise<LodgingRecord> {
+    const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
+    const appliedRate = canOverrideTariff
+      ? dto.appliedRate
+      : ((await this.resolvedTariffAmount(dto.tariffId ?? null)) ?? dto.appliedRate);
+
     const today = new Date().toISOString().slice(0, 10);
     const record = this.repo.create({
       lodgingTypeId: dto.lodgingTypeId,
@@ -119,7 +133,7 @@ export class LodgingService {
       nights: dto.nights,
       guests: dto.guests,
       tariffId: dto.tariffId ?? null,
-      appliedRate: dto.appliedRate,
+      appliedRate,
       totalAmount: dto.totalAmount,
       observations: dto.observations ?? null,
       createdByUserId: userId,
@@ -136,14 +150,21 @@ export class LodgingService {
     return this.findById(saved.id);
   }
 
-  async update(id: number, dto: UpdateLodgingDto, userId: number, ip: string): Promise<LodgingRecord> {
+  async update(id: number, dto: UpdateLodgingDto, userId: number, ip: string, userPermissions: string[] = []): Promise<LodgingRecord> {
     const record = await this.findById(id);
     const old = { ...record };
+
+    const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
+
     if (dto.lodgingTypeId !== undefined) record.lodgingTypeId = dto.lodgingTypeId;
     if (dto.nights !== undefined) record.nights = dto.nights;
     if (dto.guests !== undefined) record.guests = dto.guests;
     if (dto.tariffId !== undefined) record.tariffId = dto.tariffId ?? null;
-    if (dto.appliedRate !== undefined) record.appliedRate = dto.appliedRate;
+    if (dto.appliedRate !== undefined) {
+      record.appliedRate = canOverrideTariff
+        ? dto.appliedRate
+        : ((await this.resolvedTariffAmount(record.tariffId)) ?? dto.appliedRate);
+    }
     if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.observations !== undefined) record.observations = dto.observations ?? null;
     record.updatedAt = new Date();

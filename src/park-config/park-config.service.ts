@@ -18,26 +18,34 @@ export class ParkConfigService {
     private readonly audit: AuditService,
   ) {}
 
-  async get(): Promise<ParkConfig> {
-    const config = await this.parkConfigRepo.findOne({ where: {} });
-    if (!config) {
-      throw new NotFoundException('Park configuration not found');
-    }
-    return config;
+  /** Devuelve la configuración del parque, o null si todavía no existe. */
+  async get(): Promise<ParkConfig | null> {
+    return this.parkConfigRepo.findOne({ where: {}, order: { id: 'ASC' } }) ?? null;
   }
 
-  async update(dto: UpdateParkConfigDto, actorId: number, ip: string): Promise<ParkConfig> {
-    const config = await this.get();
-    const old = { ...config };
+  /**
+   * Crea la configuración si no existe, o la actualiza si ya existe.
+   * Esto permite que el frontend funcione desde una DB vacía.
+   */
+  async upsert(dto: UpdateParkConfigDto, actorId: number, ip: string): Promise<ParkConfig> {
+    const existing = await this.parkConfigRepo.findOne({ where: {}, order: { id: 'ASC' } });
+    const isNew = !existing;
 
+    // Garantizamos que config es ParkConfig (nunca null) antes de Object.assign
+    const config: ParkConfig = existing ?? this.parkConfigRepo.create({
+      parkName: dto.parkName ?? 'Mi parque',
+      sidebarColorHex: dto.sidebarColorHex ?? '#1A3A2A',
+    });
+
+    const old = isNew ? null : { ...config };
     Object.assign(config, dto);
-    config.updatedAt = new Date();
+    if (!isNew) config.updatedAt = new Date();
 
     const saved = await this.parkConfigRepo.save(config);
 
     await this.audit.record({
       userId: actorId,
-      action: 'UPDATE',
+      action: isNew ? 'CREATE' : 'UPDATE',
       entityName: 'ParkConfig',
       entityId: saved.id,
       oldValues: old,

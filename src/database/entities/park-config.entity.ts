@@ -38,6 +38,9 @@ export class ParkConfig {
   @Column({ name: 'max_capacity', type: 'int', default: 150 })
   maxCapacity!: number;
 
+  @Column({ name: 'sidebar_color_hex', type: 'nvarchar', length: 7, nullable: true })
+  sidebarColorHex!: string | null;
+
   @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
   createdAt!: Date;
 

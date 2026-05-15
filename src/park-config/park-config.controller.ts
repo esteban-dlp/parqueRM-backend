@@ -39,25 +39,34 @@ export class ParkConfigController {
     private readonly responses: ResponseService,
   ) {}
 
+  /**
+   * Devuelve la configuración del parque.
+   * Si todavía no existe ningún registro, devuelve data: null (no es un error).
+   * El frontend puede distinguir "no configurado" de "error real".
+   */
   @Get()
   @RequirePermissions('CONFIG_READ')
-  @ApiOperation({ summary: 'Get park configuration' })
+  @ApiOperation({ summary: 'Get park configuration (null if not yet created)' })
   async get() {
     const config = await this.parkConfigService.get();
-    return this.responses.ok(config, 'Park configuration');
+    return this.responses.ok(config, config ? 'Park configuration' : 'No configuration found');
   }
 
+  /**
+   * Crea o actualiza la configuración del parque (upsert).
+   * Si no existe registro, lo crea. Si ya existe, lo actualiza.
+   */
   @Patch()
   @RequirePermissions('CONFIG_UPDATE')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update park configuration' })
-  async update(
+  @ApiOperation({ summary: 'Create or update park configuration (upsert)' })
+  async upsert(
     @Body() dto: UpdateParkConfigDto,
     @CurrentUser('id') actorId: number,
     @Request() req: any,
   ) {
-    const config = await this.parkConfigService.update(dto, actorId, req.ip);
-    return this.responses.updated(config, 'Park configuration updated');
+    const config = await this.parkConfigService.upsert(dto, actorId, req.ip);
+    return this.responses.updated(config, 'Park configuration saved');
   }
 
   @Post('logo')
@@ -94,7 +103,8 @@ export class ParkConfigController {
   ) {
     if (!file) throw new BadRequestException('No se recibió ningún archivo');
     const logoUrl = `/uploads/logos/${file.filename}`;
-    const config = await this.parkConfigService.update({ logoUrl }, actorId, req.ip);
+    // upsert: creates config if it doesn't exist yet, or updates logoUrl if it does
+    const config = await this.parkConfigService.upsert({ logoUrl }, actorId, req.ip);
     return this.responses.ok({ logoUrl: config.logoUrl }, 'Logo subido correctamente');
   }
 

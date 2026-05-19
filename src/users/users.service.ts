@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -38,6 +39,7 @@ export class UsersService {
     const qb = this.userRepo
       .createQueryBuilder('u')
       .leftJoinAndSelect('u.role', 'role')
+      .where('u.deleted_at IS NULL')
       .orderBy('u.id', 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -116,6 +118,9 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException({ code: ResponseCodes.NOT_FOUND, message: 'User not found' });
     }
+    if (user.username === 'admin') {
+      throw new ForbiddenException('El usuario admin no puede ser modificado.');
+    }
 
     const oldValues = { fullName: user.fullName, email: user.email, roleId: user.roleId };
 
@@ -143,6 +148,9 @@ export class UsersService {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException({ code: ResponseCodes.NOT_FOUND, message: 'User not found' });
+    }
+    if (user.username === 'admin') {
+      throw new ForbiddenException('El usuario admin no puede ser desactivado.');
     }
 
     const oldActive = user.isActive;
@@ -189,8 +197,12 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException({ code: ResponseCodes.NOT_FOUND, message: 'User not found' });
     }
+    if (user.username === 'admin') {
+      throw new ForbiddenException('El usuario admin no puede ser eliminado.');
+    }
 
     user.isActive = false;
+    user.deletedAt = new Date();
     user.updatedAt = new Date();
     await this.userRepo.save(user);
 

@@ -35,21 +35,30 @@ export class TariffsService {
       .leftJoinAndSelect('t.visitorCategory', 'visitorCategory')
       .leftJoinAndSelect('t.vehicleType', 'vehicleType')
       .leftJoinAndSelect('t.lodgingType', 'lodgingType')
+      .where('t.deleted_at IS NULL')
       .orderBy('t.id', 'DESC')
       .skip(skip)
       .take(limit);
 
+    if (query.search) qb.andWhere('t.name LIKE :search', { search: `%${query.search}%` });
     if (query.appliesTo) qb.andWhere('t.appliesTo = :appliesTo', { appliesTo: query.appliesTo });
     if (query.serviceId) qb.andWhere('t.serviceId = :serviceId', { serviceId: query.serviceId });
     if (query.isActive !== undefined) qb.andWhere('t.isActive = :isActive', { isActive: query.isActive });
-    if (query.isForeign !== undefined) qb.andWhere('t.isForeign = :isForeign', { isForeign: query.isForeign });
 
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: number): Promise<Tariff> {
-    const tariff = await this.tariffRepo.findOne({ where: { id }, relations: this.relations });
+    const tariff = await this.tariffRepo
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.service', 'service')
+      .leftJoinAndSelect('t.visitorCategory', 'visitorCategory')
+      .leftJoinAndSelect('t.vehicleType', 'vehicleType')
+      .leftJoinAndSelect('t.lodgingType', 'lodgingType')
+      .where('t.id = :id', { id })
+      .andWhere('t.deleted_at IS NULL')
+      .getOne();
     if (!tariff) throw new NotFoundException(`Tariff #${id} not found`);
     return tariff;
   }
@@ -66,6 +75,7 @@ export class TariffsService {
       .andWhere('t.isActive = :isActive', { isActive: true })
       .andWhere('t.validFrom <= :today', { today })
       .andWhere('(t.validTo IS NULL OR t.validTo >= :today)', { today })
+      .andWhere('t.deleted_at IS NULL')
       .orderBy('t.name', 'ASC')
       .getMany();
   }
@@ -75,7 +85,6 @@ export class TariffsService {
     categoryId?: number,
     vehicleTypeId?: number,
     lodgingTypeId?: number,
-    isForeign?: boolean,
   ): Promise<Tariff | null> {
     const today = new Date().toISOString().slice(0, 10);
 
@@ -87,25 +96,29 @@ export class TariffsService {
       .where('t.appliesTo = :appliesTo', { appliesTo })
       .andWhere('t.isActive = :isActive', { isActive: true })
       .andWhere('t.validFrom <= :today', { today })
-      .andWhere('(t.validTo IS NULL OR t.validTo >= :today)', { today });
+      .andWhere('(t.validTo IS NULL OR t.validTo >= :today)', { today })
+      .andWhere('t.deleted_at IS NULL');
 
     if (categoryId !== undefined) qb.andWhere('(t.visitorCategoryId = :categoryId OR t.visitorCategoryId IS NULL)', { categoryId });
     if (vehicleTypeId !== undefined) qb.andWhere('(t.vehicleTypeId = :vehicleTypeId OR t.vehicleTypeId IS NULL)', { vehicleTypeId });
     if (lodgingTypeId !== undefined) qb.andWhere('(t.lodgingTypeId = :lodgingTypeId OR t.lodgingTypeId IS NULL)', { lodgingTypeId });
-    if (isForeign !== undefined) qb.andWhere('(t.isForeign = :isForeign OR t.isForeign IS NULL)', { isForeign });
 
     const results = await qb.orderBy('t.id', 'DESC').getMany();
 
-    // Prefer exact matches (non-null FK fields) over generic ones
+    // Prefer exact FK matches over generic ones
     const exact = results.find((t) => {
       if (categoryId && t.visitorCategoryId !== categoryId) return false;
       if (vehicleTypeId && t.vehicleTypeId !== vehicleTypeId) return false;
       if (lodgingTypeId && t.lodgingTypeId !== lodgingTypeId) return false;
-      if (isForeign !== undefined && t.isForeign !== null && t.isForeign !== isForeign) return false;
       return true;
     });
 
     return exact ?? results[0] ?? null;
+  }
+
+  /** Devuelve el precio local o extranjero según la bandera. */
+  resolveAmount(tariff: Tariff, isForeign: boolean): number {
+    return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
   }
 
   async create(dto: CreateTariffDto, actorId: number, ip: string): Promise<Tariff> {
@@ -114,7 +127,6 @@ export class TariffsService {
       visitorCategoryId: dto.visitorCategoryId ?? null,
       vehicleTypeId: dto.vehicleTypeId ?? null,
       lodgingTypeId: dto.lodgingTypeId ?? null,
-      isForeign: dto.isForeign ?? null,
       validTo: dto.validTo ?? null,
       isActive: true,
     });
@@ -139,7 +151,6 @@ export class TariffsService {
 
     Object.assign(tariff, dto);
     if (dto.validTo === undefined && 'validTo' in dto) tariff.validTo = null;
-    if (dto.isForeign === undefined && 'isForeign' in dto) tariff.isForeign = null;
 
     const saved = await this.tariffRepo.save(tariff);
 
@@ -178,6 +189,7 @@ export class TariffsService {
   async delete(id: number, actorId: number, ip: string): Promise<void> {
     const tariff = await this.findById(id);
     tariff.isActive = false;
+    tariff.deletedAt = new Date();
     await this.tariffRepo.save(tariff);
 
     await this.audit.record({

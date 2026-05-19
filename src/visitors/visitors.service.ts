@@ -26,10 +26,11 @@ export class VisitorsService {
     private readonly auditService: AuditService,
   ) {}
 
-  private async resolvedTariffAmount(tariffId: number | null): Promise<number | null> {
+  private async resolvedTariffAmount(tariffId: number | null, isForeign = false): Promise<number | null> {
     if (!tariffId) return null;
     const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
-    return tariff?.amount ?? null;
+    if (!tariff) return null;
+    return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
   }
 
   async findAll(query: QueryVisitorDto) {
@@ -162,7 +163,7 @@ export class VisitorsService {
       .getRawMany();
 
     return {
-      totalVisitors: Number(totals?.totalVisitors ?? 0),
+      total: Number(totals?.totalVisitors ?? 0),
       totalQuantity: Number(totals?.totalQuantity ?? 0),
       totalAmount: Number(totals?.totalAmount ?? 0),
       byCategory,
@@ -183,10 +184,11 @@ export class VisitorsService {
     const datePart = today.replace(/-/g, '');
     const ticketNumber = `VIS-${datePart}-${sequence}`;
 
+    const isForeign = dto.isForeign ?? false;
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
     const appliedRate = canOverrideTariff
       ? dto.appliedRate
-      : ((await this.resolvedTariffAmount(dto.tariffId ?? null)) ?? dto.appliedRate);
+      : ((await this.resolvedTariffAmount(dto.tariffId ?? null, isForeign)) ?? dto.appliedRate);
 
     const record = this.repo.create({
       ticketNumber,
@@ -195,6 +197,7 @@ export class VisitorsService {
       tariffId: dto.tariffId ?? null,
       appliedRate,
       totalAmount: dto.totalAmount,
+      isForeign,
       recordDate: dto.recordDate ?? today,
       checkInAt: dto.checkInAt ? new Date(dto.checkInAt) : new Date(),
       countryId: dto.countryId ?? null,
@@ -247,13 +250,14 @@ export class VisitorsService {
 
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
 
+    if (dto.isForeign !== undefined) record.isForeign = dto.isForeign;
     if (dto.visitorCategoryId !== undefined) record.visitorCategoryId = dto.visitorCategoryId;
     if (dto.quantity !== undefined) record.quantity = dto.quantity;
     if (dto.tariffId !== undefined) record.tariffId = dto.tariffId ?? null;
     if (dto.appliedRate !== undefined) {
       record.appliedRate = canOverrideTariff
         ? dto.appliedRate
-        : ((await this.resolvedTariffAmount(record.tariffId)) ?? dto.appliedRate);
+        : ((await this.resolvedTariffAmount(record.tariffId, record.isForeign)) ?? dto.appliedRate);
     }
     if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.countryId !== undefined) record.countryId = dto.countryId ?? null;

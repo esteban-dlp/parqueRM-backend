@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -20,6 +21,7 @@ import { ResponseService } from '../common/services/response.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('catalogs')
 @ApiBearerAuth()
@@ -84,8 +86,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete country' })
-  async deleteCountry(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteCountry(id);
+  async deleteCountry(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteCountry(id, actorId, req.ip);
     return this.responses.deleted('Country deleted');
   }
 
@@ -132,8 +134,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete department' })
-  async deleteDepartment(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteDepartment(id);
+  async deleteDepartment(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteDepartment(id, actorId, req.ip);
     return this.responses.deleted('Department deleted');
   }
 
@@ -192,8 +194,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete municipality' })
-  async deleteMunicipality(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteMunicipality(id);
+  async deleteMunicipality(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteMunicipality(id, actorId, req.ip);
     return this.responses.deleted('Municipality deleted');
   }
 
@@ -246,8 +248,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete visitor category' })
-  async deleteVisitorCategory(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteVisitorCategory(id);
+  async deleteVisitorCategory(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteVisitorCategory(id, actorId, req.ip);
     return this.responses.deleted('VisitorCategory deleted');
   }
 
@@ -300,8 +302,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete vehicle type' })
-  async deleteVehicleType(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteVehicleType(id);
+  async deleteVehicleType(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteVehicleType(id, actorId, req.ip);
     return this.responses.deleted('VehicleType deleted');
   }
 
@@ -354,8 +356,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete lodging type' })
-  async deleteLodgingType(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteLodgingType(id);
+  async deleteLodgingType(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteLodgingType(id, actorId, req.ip);
     return this.responses.deleted('LodgingType deleted');
   }
 
@@ -408,8 +410,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete payment method' })
-  async deletePaymentMethod(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deletePaymentMethod(id);
+  async deletePaymentMethod(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deletePaymentMethod(id, actorId, req.ip);
     return this.responses.deleted('PaymentMethod deleted');
   }
 
@@ -465,8 +467,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete financial concept' })
-  async deleteFinancialConcept(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteFinancialConcept(id);
+  async deleteFinancialConcept(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteFinancialConcept(id, actorId, req.ip);
     return this.responses.deleted('FinancialConcept deleted');
   }
 
@@ -513,8 +515,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete visit reason' })
-  async deleteVisitReason(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteVisitReason(id);
+  async deleteVisitReason(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteVisitReason(id, actorId, req.ip);
     return this.responses.deleted('VisitReason deleted');
   }
 
@@ -561,8 +563,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete visit activity' })
-  async deleteVisitActivity(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteVisitActivity(id);
+  async deleteVisitActivity(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteVisitActivity(id, actorId, req.ip);
     return this.responses.deleted('VisitActivity deleted');
   }
 
@@ -609,8 +611,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete info source' })
-  async deleteInfoSource(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteInfoSource(id);
+  async deleteInfoSource(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteInfoSource(id, actorId, req.ip);
     return this.responses.deleted('InfoSource deleted');
   }
 
@@ -657,8 +659,8 @@ export class CatalogsController {
   @RequirePermissions('CATALOGS_MANAGE')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete travel type' })
-  async deleteTravelType(@Param('id', ParseIntPipe) id: number) {
-    await this.catalogsService.deleteTravelType(id);
+  async deleteTravelType(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @Request() req: any) {
+    await this.catalogsService.deleteTravelType(id, actorId, req.ip);
     return this.responses.deleted('TravelType deleted');
   }
 }

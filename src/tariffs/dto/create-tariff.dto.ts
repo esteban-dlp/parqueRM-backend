@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateTariffDto {
   @ApiProperty()
@@ -30,15 +30,15 @@ export class CreateTariffDto {
   @IsEnum(['VISITANTE', 'VEHICULO', 'HOSPEDAJE', 'SERVICIO'])
   appliesTo!: 'VISITANTE' | 'VEHICULO' | 'HOSPEDAJE' | 'SERVICIO';
 
-  @ApiProperty({ minimum: 0 })
+  @ApiProperty({ minimum: 0, description: 'Precio para visitantes nacionales/locales' })
   @IsNumber()
   @Min(0)
-  amount!: number;
+  amountLocal!: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isForeign?: boolean;
+  @ApiProperty({ minimum: 0, description: 'Precio para visitantes extranjeros' })
+  @IsNumber()
+  @Min(0)
+  amountForeign!: number;
 
   @ApiProperty()
   @IsDateString()

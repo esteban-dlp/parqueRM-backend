@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -42,6 +42,11 @@ export class CreateLodgingDto {
   @Min(0)
   @Type(() => Number)
   totalAmount!: number;
+
+  @ApiPropertyOptional({ default: false, description: 'true = huésped extranjero; false = nacional/local' })
+  @IsOptional()
+  @IsBoolean()
+  isForeign?: boolean = false;
 
   @ApiPropertyOptional()
   @IsOptional()

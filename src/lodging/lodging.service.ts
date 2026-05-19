@@ -18,10 +18,11 @@ export class LodgingService {
     private readonly auditService: AuditService,
   ) {}
 
-  private async resolvedTariffAmount(tariffId: number | null): Promise<number | null> {
+  private async resolvedTariffAmount(tariffId: number | null, isForeign = false): Promise<number | null> {
     if (!tariffId) return null;
     const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
-    return tariff?.amount ?? null;
+    if (!tariff) return null;
+    return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
   }
 
   async findAll(query: QueryLodgingDto) {
@@ -37,6 +38,7 @@ export class LodgingService {
       .skip(skip)
       .take(take);
 
+    if (query.search) qb.andWhere('lr.observations LIKE :search', { search: `%${query.search}%` });
     if (query.from) qb.andWhere('lr.recordDate >= :from', { from: query.from });
     if (query.to) qb.andWhere('lr.recordDate <= :to', { to: query.to });
     if (query.lodgingTypeId) qb.andWhere('lr.lodgingTypeId = :typeId', { typeId: query.lodgingTypeId });
@@ -78,7 +80,7 @@ export class LodgingService {
       .where('lr.recordDate = :today', { today })
       .getRawOne();
     return {
-      totalRecords: Number(totals?.totalRecords ?? 0),
+      total: Number(totals?.totalRecords ?? 0),
       totalGuests: Number(totals?.totalGuests ?? 0),
       totalNights: Number(totals?.totalNights ?? 0),
       totalAmount: Number(totals?.totalAmount ?? 0),
@@ -121,10 +123,11 @@ export class LodgingService {
   }
 
   async create(dto: CreateLodgingDto, userId: number, ip: string, userPermissions: string[] = []): Promise<LodgingRecord> {
+    const isForeign = dto.isForeign ?? false;
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
     const appliedRate = canOverrideTariff
       ? dto.appliedRate
-      : ((await this.resolvedTariffAmount(dto.tariffId ?? null)) ?? dto.appliedRate);
+      : ((await this.resolvedTariffAmount(dto.tariffId ?? null, isForeign)) ?? dto.appliedRate);
 
     const today = new Date().toISOString().slice(0, 10);
     const record = this.repo.create({
@@ -135,6 +138,7 @@ export class LodgingService {
       tariffId: dto.tariffId ?? null,
       appliedRate,
       totalAmount: dto.totalAmount,
+      isForeign,
       observations: dto.observations ?? null,
       createdByUserId: userId,
     });
@@ -156,6 +160,7 @@ export class LodgingService {
 
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
 
+    if (dto.isForeign !== undefined) record.isForeign = dto.isForeign;
     if (dto.lodgingTypeId !== undefined) record.lodgingTypeId = dto.lodgingTypeId;
     if (dto.nights !== undefined) record.nights = dto.nights;
     if (dto.guests !== undefined) record.guests = dto.guests;
@@ -163,7 +168,7 @@ export class LodgingService {
     if (dto.appliedRate !== undefined) {
       record.appliedRate = canOverrideTariff
         ? dto.appliedRate
-        : ((await this.resolvedTariffAmount(record.tariffId)) ?? dto.appliedRate);
+        : ((await this.resolvedTariffAmount(record.tariffId, record.isForeign)) ?? dto.appliedRate);
     }
     if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.observations !== undefined) record.observations = dto.observations ?? null;

@@ -1,11 +1,12 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { Role } from '../database/entities/role.entity';
 import { Permission } from '../database/entities/permission.entity';
 import { AuditService } from '../audit/audit.service';
@@ -27,6 +28,7 @@ export class RolesService {
 
   findAll() {
     return this.roleRepo.find({
+      where: { deletedAt: IsNull() },
       relations: ['permissions'],
       order: { id: 'ASC' },
     });
@@ -80,6 +82,9 @@ export class RolesService {
     if (!role) {
       throw new NotFoundException({ code: ResponseCodes.NOT_FOUND, message: 'Role not found' });
     }
+    if (role.name === 'Administrador') {
+      throw new ForbiddenException('El rol Administrador no puede ser modificado.');
+    }
 
     const oldValues = { name: role.name, description: role.description };
 
@@ -107,8 +112,12 @@ export class RolesService {
     if (!role) {
       throw new NotFoundException({ code: ResponseCodes.NOT_FOUND, message: 'Role not found' });
     }
+    if (role.name === 'Administrador') {
+      throw new ForbiddenException('El rol Administrador no puede ser eliminado.');
+    }
 
     role.isActive = false;
+    role.deletedAt = new Date();
     role.updatedAt = new Date();
     await this.roleRepo.save(role);
 
@@ -147,6 +156,9 @@ export class RolesService {
 
     if (!role) {
       throw new NotFoundException({ code: ResponseCodes.NOT_FOUND, message: 'Role not found' });
+    }
+    if (role.name === 'Administrador') {
+      throw new ForbiddenException('Los permisos del rol Administrador no pueden ser modificados.');
     }
 
     const oldPermIds = role.permissions.map((p) => p.id);

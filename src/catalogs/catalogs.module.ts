@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../audit/audit.module';
 import { Country } from '../database/entities/country.entity';
 import { Department } from '../database/entities/department.entity';
 import { Municipality } from '../database/entities/municipality.entity';
@@ -17,6 +18,7 @@ import { CatalogsController } from './catalogs.controller';
 
 @Module({
   imports: [
+    AuditModule,
     TypeOrmModule.forFeature([
       Country,
       Department,

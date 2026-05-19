@@ -48,6 +48,9 @@ export class VehicleRecord {
   @Column({ name: 'exit_enabled', type: 'bit', default: false })
   exitEnabled!: boolean;
 
+  @Column({ name: 'is_foreign', type: 'bit', default: false })
+  isForeign!: boolean;
+
   @Column({ name: 'source', type: 'nvarchar', length: 50, default: 'MANUAL' })
   source!: string;
 

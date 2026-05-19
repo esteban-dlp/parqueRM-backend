@@ -71,24 +71,21 @@ export class TariffsController {
   @Get('resolve')
   @RequirePermissions('CATALOGS_READ')
   @ApiQuery({ name: 'appliesTo', required: true, enum: ['VISITANTE', 'VEHICULO', 'HOSPEDAJE', 'SERVICIO'] })
-  @ApiQuery({ name: 'categoryId', required: false })
+  @ApiQuery({ name: 'visitorCategoryId', required: false })
   @ApiQuery({ name: 'vehicleTypeId', required: false })
   @ApiQuery({ name: 'lodgingTypeId', required: false })
-  @ApiQuery({ name: 'isForeign', required: false })
   @ApiOperation({ summary: 'Resolve best matching tariff' })
   async resolve(
     @Query('appliesTo') appliesTo: string,
-    @Query('categoryId') categoryId?: string,
+    @Query('visitorCategoryId') visitorCategoryId?: string,
     @Query('vehicleTypeId') vehicleTypeId?: string,
     @Query('lodgingTypeId') lodgingTypeId?: string,
-    @Query('isForeign') isForeign?: string,
   ) {
     const tariff = await this.tariffsService.resolve(
       appliesTo,
-      categoryId ? parseInt(categoryId) : undefined,
+      visitorCategoryId ? parseInt(visitorCategoryId) : undefined,
       vehicleTypeId ? parseInt(vehicleTypeId) : undefined,
       lodgingTypeId ? parseInt(lodgingTypeId) : undefined,
-      isForeign !== undefined ? isForeign === 'true' : undefined,
     );
     return this.responses.ok(tariff, 'Resolved tariff');
   }

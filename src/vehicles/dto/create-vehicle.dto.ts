@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -41,6 +41,11 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsString()
   observations?: string;
+
+  @ApiPropertyOptional({ default: false, description: 'true = extranjero; false = nacional/local' })
+  @IsOptional()
+  @IsBoolean()
+  isForeign?: boolean = false;
 
   @ApiPropertyOptional({ default: 'MANUAL' })
   @IsOptional()

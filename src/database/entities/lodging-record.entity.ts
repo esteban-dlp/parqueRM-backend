@@ -37,6 +37,9 @@ export class LodgingRecord {
   @Column({ name: 'total_amount', type: 'decimal', precision: 12, scale: 2 })
   totalAmount!: number;
 
+  @Column({ name: 'is_foreign', type: 'bit', default: false })
+  isForeign!: boolean;
+
   @Column({ name: 'observations', type: 'nvarchar', length: 500, nullable: true })
   observations!: string | null;
 

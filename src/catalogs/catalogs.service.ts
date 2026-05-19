@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
+import { AuditService } from '../audit/audit.service';
 import { Country } from '../database/entities/country.entity';
 import { Department } from '../database/entities/department.entity';
 import { Municipality } from '../database/entities/municipality.entity';
@@ -16,7 +17,7 @@ import { TravelType } from '../database/entities/travel-type.entity';
 import { CreateCatalogItemDto } from './dto/create-catalog-item.dto';
 import { UpdateCatalogItemDto } from './dto/update-catalog-item.dto';
 
-type CatalogEntity = { id: number; name: string; isActive?: boolean; [key: string]: any };
+type CatalogEntity = { id: number; name: string; isActive?: boolean; deletedAt?: Date | null; [key: string]: any };
 
 @Injectable()
 export class CatalogsService {
@@ -45,6 +46,7 @@ export class CatalogsService {
     private readonly infoSourceRepo: Repository<InfoSource>,
     @InjectRepository(TravelType)
     private readonly travelTypeRepo: Repository<TravelType>,
+    private readonly audit: AuditService,
   ) {}
 
   // Generic helpers
@@ -61,8 +63,9 @@ export class CatalogsService {
   ): Promise<{ items: T[]; total: number; page: number; limit: number; totalPages: number }> {
     const take = this.clampLimit(limit);
     const skip = (page - 1) * take;
+    const mergedWhere = { ...(where ?? {}), deletedAt: IsNull() } as any;
     const [items, total] = await repo.findAndCount({
-      where: where as any,
+      where: mergedWhere,
       order: order ?? ({ name: 'ASC' } as any),
       skip,
       take,
@@ -75,7 +78,7 @@ export class CatalogsService {
     id: number,
     entityLabel: string,
   ): Promise<T> {
-    const item = await repo.findOne({ where: { id } as any });
+    const item = await repo.findOne({ where: { id, deletedAt: IsNull() } as any });
     if (!item) throw new NotFoundException(`${entityLabel} #${id} not found`);
     return item;
   }
@@ -110,14 +113,20 @@ export class CatalogsService {
     repo: Repository<T>,
     id: number,
     entityLabel: string,
+    actorId: number,
+    ip?: string,
   ): Promise<void> {
     const entity = await this.genericFindById(repo, id, entityLabel);
-    if ('isActive' in entity) {
-      entity.isActive = false;
-      await repo.save(entity as any);
-    } else {
-      await repo.remove(entity as any);
-    }
+    entity.deletedAt = new Date();
+    if ('isActive' in entity) entity.isActive = false;
+    await repo.save(entity as any);
+    await this.audit.record({
+      userId: actorId,
+      action: 'DELETE',
+      entityName: entityLabel,
+      entityId: id,
+      ipAddress: ip,
+    });
   }
 
   // ─── Countries ─────────────────────────────────────────────────────────────
@@ -143,8 +152,8 @@ export class CatalogsService {
   toggleCountryStatus(id: number) {
     return this.genericToggleStatus(this.countryRepo, id, 'Country');
   }
-  deleteCountry(id: number) {
-    return this.genericDelete(this.countryRepo, id, 'Country');
+  deleteCountry(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.countryRepo, id, 'Country', actorId, ip);
   }
 
   // ─── Departments ───────────────────────────────────────────────────────────
@@ -165,8 +174,8 @@ export class CatalogsService {
   toggleDepartmentStatus(id: number) {
     return this.genericToggleStatus(this.departmentRepo, id, 'Department');
   }
-  deleteDepartment(id: number) {
-    return this.genericDelete(this.departmentRepo, id, 'Department');
+  deleteDepartment(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.departmentRepo, id, 'Department', actorId, ip);
   }
 
   // ─── Municipalities ────────────────────────────────────────────────────────
@@ -177,7 +186,7 @@ export class CatalogsService {
     });
   }
   findMunicipalityById(id: number) {
-    return this.municipalityRepo.findOne({ where: { id }, relations: ['department'] }).then((m) => {
+    return this.municipalityRepo.findOne({ where: { id, deletedAt: IsNull() } as any, relations: ['department'] }).then((m) => {
       if (!m) throw new NotFoundException(`Municipality #${id} not found`);
       return m;
     });
@@ -186,7 +195,7 @@ export class CatalogsService {
     const take = this.clampLimit(limit);
     const skip = (page - 1) * take;
     const [items, total] = await this.municipalityRepo.findAndCount({
-      where: { departmentId } as any,
+      where: { departmentId, deletedAt: IsNull() } as any,
       order: { name: 'ASC' } as any,
       skip,
       take,
@@ -210,8 +219,8 @@ export class CatalogsService {
   toggleMunicipalityStatus(id: number) {
     return this.genericToggleStatus(this.municipalityRepo, id, 'Municipality');
   }
-  deleteMunicipality(id: number) {
-    return this.genericDelete(this.municipalityRepo, id, 'Municipality');
+  deleteMunicipality(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.municipalityRepo, id, 'Municipality', actorId, ip);
   }
 
   // ─── Visitor Categories ────────────────────────────────────────────────────
@@ -233,8 +242,8 @@ export class CatalogsService {
   toggleVisitorCategoryStatus(id: number) {
     return this.genericToggleStatus(this.visitorCategoryRepo, id, 'VisitorCategory');
   }
-  deleteVisitorCategory(id: number) {
-    return this.genericDelete(this.visitorCategoryRepo, id, 'VisitorCategory');
+  deleteVisitorCategory(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.visitorCategoryRepo, id, 'VisitorCategory', actorId, ip);
   }
 
   // ─── Vehicle Types ─────────────────────────────────────────────────────────
@@ -256,8 +265,8 @@ export class CatalogsService {
   toggleVehicleTypeStatus(id: number) {
     return this.genericToggleStatus(this.vehicleTypeRepo, id, 'VehicleType');
   }
-  deleteVehicleType(id: number) {
-    return this.genericDelete(this.vehicleTypeRepo, id, 'VehicleType');
+  deleteVehicleType(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.vehicleTypeRepo, id, 'VehicleType', actorId, ip);
   }
 
   // ─── Lodging Types ─────────────────────────────────────────────────────────
@@ -279,8 +288,8 @@ export class CatalogsService {
   toggleLodgingTypeStatus(id: number) {
     return this.genericToggleStatus(this.lodgingTypeRepo, id, 'LodgingType');
   }
-  deleteLodgingType(id: number) {
-    return this.genericDelete(this.lodgingTypeRepo, id, 'LodgingType');
+  deleteLodgingType(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.lodgingTypeRepo, id, 'LodgingType', actorId, ip);
   }
 
   // ─── Payment Methods ───────────────────────────────────────────────────────
@@ -302,8 +311,8 @@ export class CatalogsService {
   togglePaymentMethodStatus(id: number) {
     return this.genericToggleStatus(this.paymentMethodRepo, id, 'PaymentMethod');
   }
-  deletePaymentMethod(id: number) {
-    return this.genericDelete(this.paymentMethodRepo, id, 'PaymentMethod');
+  deletePaymentMethod(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.paymentMethodRepo, id, 'PaymentMethod', actorId, ip);
   }
 
   // ─── Financial Concepts ────────────────────────────────────────────────────
@@ -333,8 +342,8 @@ export class CatalogsService {
   toggleFinancialConceptStatus(id: number) {
     return this.genericToggleStatus(this.financialConceptRepo, id, 'FinancialConcept');
   }
-  deleteFinancialConcept(id: number) {
-    return this.genericDelete(this.financialConceptRepo, id, 'FinancialConcept');
+  deleteFinancialConcept(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.financialConceptRepo, id, 'FinancialConcept', actorId, ip);
   }
 
   // ─── Visit Reasons ─────────────────────────────────────────────────────────
@@ -355,8 +364,8 @@ export class CatalogsService {
   toggleVisitReasonStatus(id: number) {
     return this.genericToggleStatus(this.visitReasonRepo, id, 'VisitReason');
   }
-  deleteVisitReason(id: number) {
-    return this.genericDelete(this.visitReasonRepo, id, 'VisitReason');
+  deleteVisitReason(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.visitReasonRepo, id, 'VisitReason', actorId, ip);
   }
 
   // ─── Visit Activities ──────────────────────────────────────────────────────
@@ -377,8 +386,8 @@ export class CatalogsService {
   toggleVisitActivityStatus(id: number) {
     return this.genericToggleStatus(this.visitActivityRepo, id, 'VisitActivity');
   }
-  deleteVisitActivity(id: number) {
-    return this.genericDelete(this.visitActivityRepo, id, 'VisitActivity');
+  deleteVisitActivity(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.visitActivityRepo, id, 'VisitActivity', actorId, ip);
   }
 
   // ─── Info Sources ──────────────────────────────────────────────────────────
@@ -399,8 +408,8 @@ export class CatalogsService {
   toggleInfoSourceStatus(id: number) {
     return this.genericToggleStatus(this.infoSourceRepo, id, 'InfoSource');
   }
-  deleteInfoSource(id: number) {
-    return this.genericDelete(this.infoSourceRepo, id, 'InfoSource');
+  deleteInfoSource(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.infoSourceRepo, id, 'InfoSource', actorId, ip);
   }
 
   // ─── Travel Types ──────────────────────────────────────────────────────────
@@ -421,7 +430,7 @@ export class CatalogsService {
   toggleTravelTypeStatus(id: number) {
     return this.genericToggleStatus(this.travelTypeRepo, id, 'TravelType');
   }
-  deleteTravelType(id: number) {
-    return this.genericDelete(this.travelTypeRepo, id, 'TravelType');
+  deleteTravelType(id: number, actorId: number, ip?: string) {
+    return this.genericDelete(this.travelTypeRepo, id, 'TravelType', actorId, ip);
   }
 }

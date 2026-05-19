@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsInt,
@@ -123,6 +124,11 @@ export class CreateVisitorDto {
   @IsOptional()
   @IsString()
   observations?: string;
+
+  @ApiPropertyOptional({ default: false, description: 'true = visitante extranjero; false = nacional/local' })
+  @IsOptional()
+  @IsBoolean()
+  isForeign?: boolean = false;
 
   @ApiPropertyOptional({ default: 'MANUAL' })
   @IsOptional()

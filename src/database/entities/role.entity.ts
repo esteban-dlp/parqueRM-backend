@@ -29,6 +29,9 @@ export class Role {
   @Column({ name: 'updated_at', type: 'datetime2', nullable: true })
   updatedAt!: Date | null;
 
+  @Column({ name: 'deleted_at', type: 'datetime2', nullable: true })
+  deletedAt!: Date | null;
+
   @ManyToMany(() => Permission, (permission) => permission.roles, { cascade: false })
   @JoinTable({
     name: 'role_permissions',

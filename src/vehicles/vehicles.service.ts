@@ -18,10 +18,11 @@ export class VehiclesService {
     private readonly auditService: AuditService,
   ) {}
 
-  private async resolvedTariffAmount(tariffId: number | null): Promise<number | null> {
+  private async resolvedTariffAmount(tariffId: number | null, isForeign = false): Promise<number | null> {
     if (!tariffId) return null;
     const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
-    return tariff?.amount ?? null;
+    if (!tariff) return null;
+    return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
   }
 
   async findAll(query: QueryVehicleDto) {
@@ -86,11 +87,13 @@ export class VehiclesService {
 
   async findToday(page = 1, limit = 20) {
     const today = new Date().toISOString().slice(0, 10);
+    const start = new Date(`${today}T00:00:00.000`);
+    const end = new Date(`${today}T23:59:59.999`);
     const take = Math.min(limit, 100);
     const qb = this.repo
       .createQueryBuilder('vr')
       .leftJoinAndSelect('vr.vehicleType', 'vehicleType')
-      .where('CAST(vr.checkInAt AS DATE) = :today', { today })
+      .where('vr.checkInAt >= :start AND vr.checkInAt <= :end', { start, end })
       .orderBy('vr.checkInAt', 'DESC')
       .skip((page - 1) * take)
       .take(take);
@@ -100,13 +103,17 @@ export class VehiclesService {
 
   async todaySummary() {
     const today = new Date().toISOString().slice(0, 10);
+    const start = new Date(`${today}T00:00:00.000`);
+    const end = new Date(`${today}T23:59:59.999`);
 
     const totals = await this.repo
       .createQueryBuilder('vr')
-      .select('COUNT(vr.id)', 'totalVehicles')
+      .select('COUNT(vr.id)', 'total')
       .addSelect('SUM(vr.totalAmount)', 'totalAmount')
-      .where('CAST(vr.checkInAt AS DATE) = :today', { today })
+      .where('vr.checkInAt >= :start AND vr.checkInAt <= :end', { start, end })
       .getRawOne();
+
+    const parked = await this.repo.count({ where: { checkOutAt: IsNull() } });
 
     const byType = await this.repo
       .createQueryBuilder('vr')
@@ -114,22 +121,24 @@ export class VehiclesService {
       .select('vt.name', 'type')
       .addSelect('COUNT(vr.id)', 'count')
       .addSelect('SUM(vr.totalAmount)', 'total')
-      .where('CAST(vr.checkInAt AS DATE) = :today', { today })
+      .where('vr.checkInAt >= :start AND vr.checkInAt <= :end', { start, end })
       .groupBy('vt.name')
       .getRawMany();
 
     return {
-      totalVehicles: Number(totals?.totalVehicles ?? 0),
+      total: Number(totals?.total ?? 0),
+      parked,
       totalAmount: Number(totals?.totalAmount ?? 0),
       byType,
     };
   }
 
   async create(dto: CreateVehicleDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VehicleRecord> {
+    const isForeign = dto.isForeign ?? false;
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
     const appliedRate = canOverrideTariff
       ? dto.appliedRate
-      : ((await this.resolvedTariffAmount(dto.tariffId ?? null)) ?? dto.appliedRate);
+      : ((await this.resolvedTariffAmount(dto.tariffId ?? null, isForeign)) ?? dto.appliedRate);
 
     const record = this.repo.create({
       vehicleTypeId: dto.vehicleTypeId,
@@ -138,6 +147,7 @@ export class VehiclesService {
       tariffId: dto.tariffId ?? null,
       appliedRate,
       totalAmount: dto.totalAmount,
+      isForeign,
       observations: dto.observations ?? null,
       source: dto.source ?? 'MANUAL',
       exitEnabled: false,
@@ -162,13 +172,14 @@ export class VehiclesService {
 
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');
 
+    if (dto.isForeign !== undefined) record.isForeign = dto.isForeign;
     if (dto.vehicleTypeId !== undefined) record.vehicleTypeId = dto.vehicleTypeId;
     if (dto.plateNumber !== undefined) record.plateNumber = dto.plateNumber ?? null;
     if (dto.tariffId !== undefined) record.tariffId = dto.tariffId ?? null;
     if (dto.appliedRate !== undefined) {
       record.appliedRate = canOverrideTariff
         ? dto.appliedRate
-        : ((await this.resolvedTariffAmount(record.tariffId)) ?? dto.appliedRate);
+        : ((await this.resolvedTariffAmount(record.tariffId, record.isForeign)) ?? dto.appliedRate);
     }
     if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.observations !== undefined) record.observations = dto.observations ?? null;

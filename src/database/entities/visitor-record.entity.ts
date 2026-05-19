@@ -120,6 +120,9 @@ export class VisitorRecord {
   @Column({ name: 'observations', type: 'nvarchar', length: 500, nullable: true })
   observations!: string | null;
 
+  @Column({ name: 'is_foreign', type: 'bit', default: false })
+  isForeign!: boolean;
+
   @Column({ name: 'source', type: 'nvarchar', length: 50, default: 'MANUAL' })
   source!: string;
 

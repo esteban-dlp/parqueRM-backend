@@ -13,4 +13,7 @@ export class Country {
 
   @Column({ name: 'is_active', type: 'bit', default: true })
   isActive!: boolean;
+
+  @Column({ name: 'deleted_at', type: 'datetime2', nullable: true })
+  deletedAt!: Date | null;
 }

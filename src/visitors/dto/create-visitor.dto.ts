@@ -7,9 +7,11 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CreateVisitorCompanionDto } from './create-visitor-companion.dto';
 
 export class CreateVisitorDto {
   @ApiProperty()
@@ -146,4 +148,10 @@ export class CreateVisitorDto {
   @IsInt({ each: true })
   @Type(() => Number)
   activityIds?: number[];
+
+  @ApiPropertyOptional({ type: [CreateVisitorCompanionDto], description: 'Acompañantes del grupo' })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateVisitorCompanionDto)
+  companions?: CreateVisitorCompanionDto[];
 }

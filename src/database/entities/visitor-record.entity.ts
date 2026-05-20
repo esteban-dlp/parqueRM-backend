@@ -5,8 +5,10 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { VisitorCompanion } from './visitor-companion.entity';
 import { Country } from './country.entity';
 import { Department } from './department.entity';
 import { Municipality } from './municipality.entity';
@@ -157,4 +159,7 @@ export class VisitorRecord {
     inverseJoinColumn: { name: 'visit_activity_id', referencedColumnName: 'id' },
   })
   visitActivities!: VisitActivity[];
+
+  @OneToMany(() => VisitorCompanion, (c) => c.visitorRecord, { cascade: ['insert'] })
+  companions!: VisitorCompanion[];
 }

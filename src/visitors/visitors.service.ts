@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, Like, Between } from 'typeorm';
+import { Repository, IsNull, Like } from 'typeorm';
 import { VisitorRecord } from '../database/entities/visitor-record.entity';
+import { VisitorCompanion } from '../database/entities/visitor-companion.entity';
 import { VisitReason } from '../database/entities/visit-reason.entity';
 import { VisitActivity } from '../database/entities/visit-activity.entity';
 import { VisitorCategory } from '../database/entities/visitor-category.entity';
@@ -17,6 +18,8 @@ export class VisitorsService {
   constructor(
     @InjectRepository(VisitorRecord)
     private readonly repo: Repository<VisitorRecord>,
+    @InjectRepository(VisitorCompanion)
+    private readonly companionRepo: Repository<VisitorCompanion>,
     @InjectRepository(VisitorCategory)
     private readonly categoryRepo: Repository<VisitorCategory>,
     @InjectRepository(ParkConfig)
@@ -106,6 +109,8 @@ export class VisitorsService {
         'infoSource',
         'travelType',
         'createdByUser',
+        'companions',
+        'companions.visitorCategory',
       ],
     });
     if (!record) {
@@ -230,7 +235,28 @@ export class VisitorsService {
       record.visitActivities = [];
     }
 
+    // Companions — include their totals in the grand totalAmount
+    if (dto.companions && dto.companions.length > 0) {
+      const companionTotal = dto.companions.reduce((sum, c) => sum + Number(c.totalAmount), 0);
+      record.totalAmount = Number(dto.totalAmount) + companionTotal;
+    }
+
     const saved = await this.repo.save(record);
+
+    // Save companions linking to the saved visitor record
+    if (dto.companions && dto.companions.length > 0) {
+      const companionEntities = dto.companions.map((c) =>
+        this.companionRepo.create({
+          visitorRecordId: saved.id,
+          visitorCategoryId: c.visitorCategoryId,
+          quantity: c.quantity,
+          appliedRate: c.appliedRate,
+          totalAmount: c.totalAmount,
+          isForeign: c.isForeign ?? false,
+        }),
+      );
+      await this.companionRepo.save(companionEntities);
+    }
 
     await this.auditService.record({
       userId,

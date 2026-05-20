@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VisitorRecord } from '../database/entities/visitor-record.entity';
+import { VisitorCompanion } from '../database/entities/visitor-companion.entity';
 import { VisitReason } from '../database/entities/visit-reason.entity';
 import { VisitActivity } from '../database/entities/visit-activity.entity';
 import { VisitorCategory } from '../database/entities/visitor-category.entity';
@@ -19,6 +20,7 @@ import { VisitorsController } from './visitors.controller';
   imports: [
     TypeOrmModule.forFeature([
       VisitorRecord,
+      VisitorCompanion,
       VisitReason,
       VisitActivity,
       VisitorCategory,

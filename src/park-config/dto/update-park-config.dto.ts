@@ -63,4 +63,14 @@ export class UpdateParkConfigDto {
   @IsString()
   @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'El color debe ser un HEX válido tipo #RRGGBB' })
   sidebarColorHex?: string;
+
+  @ApiPropertyOptional({ example: 'v1.0', description: 'Versión de boleta / ticket impreso' })
+  @IsOptional()
+  @IsString()
+  ticketVersion?: string;
+
+  @ApiPropertyOptional({ example: 'RUV-2026-001', description: 'Registro único de venta / RUV oficial' })
+  @IsOptional()
+  @IsString()
+  ruv?: string;
 }

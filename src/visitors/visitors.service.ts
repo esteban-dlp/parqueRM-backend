@@ -50,6 +50,8 @@ export class VisitorsService {
       .leftJoinAndSelect('vr.tariff', 'tariff')
       .leftJoinAndSelect('vr.visitReasons', 'reasons')
       .leftJoinAndSelect('vr.visitActivities', 'activities')
+      .leftJoinAndSelect('vr.companions', 'companions')
+      .leftJoinAndSelect('companions.visitorCategory', 'companionCategory')
       .orderBy('vr.createdAt', 'DESC')
       .skip(skip)
       .take(take);
@@ -307,6 +309,37 @@ export class VisitorsService {
     if (dto.activityIds !== undefined) {
       record.visitActivities = dto.activityIds.map((aid) => ({ id: aid } as VisitActivity));
     }
+
+    // Companions: full-replace strategy when present in DTO.
+    // If dto.companions is undefined → don't touch companions.
+    // If dto.companions is an array (even empty) → replace them entirely.
+    if (dto.companions !== undefined) {
+      await this.companionRepo.delete({ visitorRecordId: id });
+      if (dto.companions.length > 0) {
+        const newOnes = dto.companions.map((c) =>
+          this.companionRepo.create({
+            visitorRecordId: id,
+            visitorCategoryId: c.visitorCategoryId,
+            quantity: c.quantity,
+            appliedRate: c.appliedRate,
+            totalAmount: c.totalAmount,
+            isForeign: c.isForeign ?? false,
+          }),
+        );
+        await this.companionRepo.save(newOnes);
+      }
+    }
+
+    // Recalculate total = primary line total + companion totals
+    const companionsAfter = await this.companionRepo.find({
+      where: { visitorRecordId: id },
+    });
+    const companionSum = companionsAfter.reduce((s, c) => s + Number(c.totalAmount), 0);
+    const primaryTotal =
+      dto.totalAmount !== undefined
+        ? Number(dto.totalAmount)
+        : Number(record.appliedRate) * Number(record.quantity);
+    record.totalAmount = parseFloat((primaryTotal + companionSum).toFixed(2));
 
     record.updatedAt = new Date();
     const saved = await this.repo.save(record);

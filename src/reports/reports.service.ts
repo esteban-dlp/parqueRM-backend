@@ -92,6 +92,8 @@ export class ReportsService {
       .createQueryBuilder('vr')
       .leftJoinAndSelect('vr.visitorCategory', 'visitorCategory')
       .leftJoinAndSelect('vr.country', 'country')
+      .leftJoinAndSelect('vr.companions', 'companions')
+      .leftJoinAndSelect('companions.visitorCategory', 'companionCategory')
       .orderBy('vr.createdAt', 'DESC')
       .skip(skip)
       .take(take);
@@ -251,6 +253,7 @@ export class ReportsService {
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.paymentMethod', 'paymentMethod')
       .leftJoinAndSelect('r.createdByUser', 'createdByUser')
+      .leftJoinAndSelect('r.lines', 'lines')
       .orderBy('r.createdAt', 'DESC')
       .skip(skip)
       .take(take);
@@ -261,5 +264,24 @@ export class ReportsService {
 
     const [data, total] = await qb.getManyAndCount();
     return { data, meta: { total, page, limit: take, totalPages: Math.ceil(total / take) } };
+  }
+
+  /**
+   * Visitors report with companion lines included so exports can audit the
+   * full Q250 grand-total vs. the Q200 primary line.
+   */
+  async getVisitorsWithLines(query: QueryReportDto) {
+    const qb = this.visitorRepo
+      .createQueryBuilder('vr')
+      .leftJoinAndSelect('vr.visitorCategory', 'visitorCategory')
+      .leftJoinAndSelect('vr.country', 'country')
+      .leftJoinAndSelect('vr.companions', 'companions')
+      .leftJoinAndSelect('companions.visitorCategory', 'companionCategory')
+      .orderBy('vr.createdAt', 'DESC');
+
+    if (query.from) qb.andWhere('vr.recordDate >= :from', { from: query.from });
+    if (query.to) qb.andWhere('vr.recordDate <= :to', { to: query.to });
+
+    return qb.getMany();
   }
 }

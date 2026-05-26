@@ -41,6 +41,12 @@ export class ParkConfig {
   @Column({ name: 'sidebar_color_hex', type: 'nvarchar', length: 7, nullable: true })
   sidebarColorHex!: string | null;
 
+  @Column({ name: 'ticket_version', type: 'nvarchar', length: 50, nullable: true })
+  ticketVersion!: string | null;
+
+  @Column({ name: 'ruv', type: 'nvarchar', length: 80, nullable: true })
+  ruv!: string | null;
+
   @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
   createdAt!: Date;
 

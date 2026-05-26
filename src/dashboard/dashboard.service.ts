@@ -92,6 +92,7 @@ export class DashboardService {
     const weekStr = weekAgo.toISOString().slice(0, 10);
 
     const todayData = await this.getToday();
+    const occupancy = await this.getOccupancy();
 
     const weekVisitors = await this.visitorRepo
       .createQueryBuilder('v')
@@ -108,7 +109,17 @@ export class DashboardService {
       .andWhere("m.status = 'ACTIVO'")
       .getRawOne();
 
+    // Flat fields consumed directly by the dashboard UI (in addition to the
+    // structured today/week blocks that other clients may use)
     return {
+      visitorsToday: todayData.visitors.records,
+      visitorsQuantityToday: todayData.visitors.quantity,
+      vehiclesToday: todayData.vehicles.records,
+      lodgingToday: todayData.lodging.records,
+      incomeToday: todayData.income,
+      currentOccupancy: occupancy.currentInside,
+      capacity: occupancy.maxCapacity,
+      occupancyPercent: occupancy.percentage,
       today: todayData,
       week: {
         visitors: Number(weekVisitors?.count ?? 0),

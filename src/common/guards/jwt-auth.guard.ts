@@ -21,9 +21,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
+      const isExpired = info?.name === 'TokenExpiredError' || info?.message === 'jwt expired';
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_INVALID_TOKEN,
-        message: info?.message ?? 'Invalid or missing token',
+        message: isExpired
+          ? 'Tu sesión expiró. Inicia sesión nuevamente.'
+          : 'Debes iniciar sesión para continuar.',
       });
     }
     return user;

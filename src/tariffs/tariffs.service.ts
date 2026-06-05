@@ -6,6 +6,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateTariffDto } from './dto/create-tariff.dto';
 import { UpdateTariffDto } from './dto/update-tariff.dto';
 import { QueryTariffDto } from './dto/query-tariff.dto';
+import { guatemalaTodayISO } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class TariffsService {
@@ -64,7 +65,7 @@ export class TariffsService {
   }
 
   async findByAppliesTo(type: string): Promise<Tariff[]> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
     return this.tariffRepo
       .createQueryBuilder('t')
       .leftJoinAndSelect('t.service', 'service')
@@ -86,7 +87,7 @@ export class TariffsService {
     vehicleTypeId?: number,
     lodgingTypeId?: number,
   ): Promise<Tariff | null> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
 
     const qb = this.tariffRepo.createQueryBuilder('t')
       .leftJoinAndSelect('t.service', 'service')

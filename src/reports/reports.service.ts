@@ -8,6 +8,7 @@ import { FinancialMovement } from '../database/entities/financial-movement.entit
 import { CashClosure } from '../database/entities/cash-closure.entity';
 import { Receipt } from '../database/entities/receipt.entity';
 import { QueryReportDto } from './dto/query-report.dto';
+import { guatemalaDateRangeUtc } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class ReportsService {
@@ -47,17 +48,17 @@ export class ReportsService {
 
     if (query.from) {
       visitorQb.andWhere('vr.recordDate >= :from', { from: query.from });
-      vehicleQb.andWhere('vh.checkInAt >= :from', { from: query.from });
+      vehicleQb.andWhere('vh.checkInAt >= :from', { from: guatemalaDateRangeUtc(query.from).from });
       lodgingQb.andWhere('lr.recordDate >= :from', { from: query.from });
-      incomeQb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
-      expenseQb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
+      incomeQb.andWhere('m.movementDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
+      expenseQb.andWhere('m.movementDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
     }
     if (query.to) {
       visitorQb.andWhere('vr.recordDate <= :to', { to: query.to });
-      vehicleQb.andWhere('vh.checkInAt <= :to', { to: query.to });
+      vehicleQb.andWhere('vh.checkInAt <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
       lodgingQb.andWhere('lr.recordDate <= :to', { to: query.to });
-      incomeQb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
-      expenseQb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
+      incomeQb.andWhere('m.movementDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
+      expenseQb.andWhere('m.movementDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     }
 
     const [totalVisitors, totalVehicles, totalLodging] = await Promise.all([
@@ -92,6 +93,14 @@ export class ReportsService {
       .createQueryBuilder('vr')
       .leftJoinAndSelect('vr.visitorCategory', 'visitorCategory')
       .leftJoinAndSelect('vr.country', 'country')
+      .leftJoinAndSelect('vr.department', 'department')
+      .leftJoinAndSelect('vr.municipality', 'municipality')
+      .leftJoinAndSelect('vr.infoSource', 'infoSource')
+      .leftJoinAndSelect('vr.travelType', 'travelType')
+      .leftJoinAndSelect('vr.tariff', 'tariff')
+      .leftJoinAndSelect('vr.visitReasons', 'visitReasons')
+      .leftJoinAndSelect('vr.visitActivities', 'visitActivities')
+      .leftJoinAndSelect('vr.createdByUser', 'createdByUser')
       .leftJoinAndSelect('vr.companions', 'companions')
       .leftJoinAndSelect('companions.visitorCategory', 'companionCategory')
       .orderBy('vr.createdAt', 'DESC')
@@ -162,12 +171,15 @@ export class ReportsService {
     const qb = this.vehicleRepo
       .createQueryBuilder('vh')
       .leftJoinAndSelect('vh.vehicleType', 'vehicleType')
+      .leftJoinAndSelect('vh.tariff', 'tariff')
+      .leftJoinAndSelect('vh.visitorRecord', 'visitorRecord')
+      .leftJoinAndSelect('vh.createdByUser', 'createdByUser')
       .orderBy('vh.createdAt', 'DESC')
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('vh.checkInAt >= :from', { from: query.from });
-    if (query.to) qb.andWhere('vh.checkInAt <= :to', { to: query.to });
+    if (query.from) qb.andWhere('vh.checkInAt >= :from', { from: guatemalaDateRangeUtc(query.from).from });
+    if (query.to) qb.andWhere('vh.checkInAt <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     if (query.source) qb.andWhere('vh.source = :source', { source: query.source });
 
     const [data, total] = await qb.getManyAndCount();
@@ -179,6 +191,8 @@ export class ReportsService {
     const qb = this.lodgingRepo
       .createQueryBuilder('lr')
       .leftJoinAndSelect('lr.lodgingType', 'lodgingType')
+      .leftJoinAndSelect('lr.tariff', 'tariff')
+      .leftJoinAndSelect('lr.createdByUser', 'createdByUser')
       .orderBy('lr.createdAt', 'DESC')
       .skip(skip)
       .take(take);
@@ -197,14 +211,16 @@ export class ReportsService {
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.concept', 'concept')
       .leftJoinAndSelect('m.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('m.receipt', 'receipt')
+      .leftJoinAndSelect('m.createdByUser', 'createdByUser')
       .where('m.movementType = :t', { t: 'INGRESO' })
       .andWhere('m.status = :s', { s: 'ACTIVO' })
       .orderBy('m.createdAt', 'DESC')
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
-    if (query.to) qb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
+    if (query.from) qb.andWhere('m.movementDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
+    if (query.to) qb.andWhere('m.movementDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     if (query.paymentMethodId) qb.andWhere('m.paymentMethodId = :pmId', { pmId: query.paymentMethodId });
 
     const [data, total] = await qb.getManyAndCount();
@@ -217,14 +233,16 @@ export class ReportsService {
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.concept', 'concept')
       .leftJoinAndSelect('m.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('m.receipt', 'receipt')
+      .leftJoinAndSelect('m.createdByUser', 'createdByUser')
       .where('m.movementType = :t', { t: 'EGRESO' })
       .andWhere('m.status = :s', { s: 'ACTIVO' })
       .orderBy('m.createdAt', 'DESC')
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('CAST(m.movementDate AS DATE) >= :from', { from: query.from });
-    if (query.to) qb.andWhere('CAST(m.movementDate AS DATE) <= :to', { to: query.to });
+    if (query.from) qb.andWhere('m.movementDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
+    if (query.to) qb.andWhere('m.movementDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     if (query.paymentMethodId) qb.andWhere('m.paymentMethodId = :pmId', { pmId: query.paymentMethodId });
 
     const [data, total] = await qb.getManyAndCount();
@@ -240,8 +258,8 @@ export class ReportsService {
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('c.closedAt >= :from', { from: query.from });
-    if (query.to) qb.andWhere('c.closedAt <= :to', { to: query.to });
+    if (query.from) qb.andWhere('c.closedAt >= :from', { from: guatemalaDateRangeUtc(query.from).from });
+    if (query.to) qb.andWhere('c.closedAt <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, meta: { total, page, limit: take, totalPages: Math.ceil(total / take) } };
@@ -253,13 +271,14 @@ export class ReportsService {
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.paymentMethod', 'paymentMethod')
       .leftJoinAndSelect('r.createdByUser', 'createdByUser')
+      .leftJoinAndSelect('r.cancelledByUser', 'cancelledByUser')
       .leftJoinAndSelect('r.lines', 'lines')
       .orderBy('r.createdAt', 'DESC')
       .skip(skip)
       .take(take);
 
-    if (query.from) qb.andWhere('r.receiptDate >= :from', { from: query.from });
-    if (query.to) qb.andWhere('r.receiptDate <= :to', { to: query.to });
+    if (query.from) qb.andWhere('r.receiptDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
+    if (query.to) qb.andWhere('r.receiptDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     if (query.paymentMethodId) qb.andWhere('r.paymentMethodId = :pmId', { pmId: query.paymentMethodId });
 
     const [data, total] = await qb.getManyAndCount();
@@ -275,6 +294,14 @@ export class ReportsService {
       .createQueryBuilder('vr')
       .leftJoinAndSelect('vr.visitorCategory', 'visitorCategory')
       .leftJoinAndSelect('vr.country', 'country')
+      .leftJoinAndSelect('vr.department', 'department')
+      .leftJoinAndSelect('vr.municipality', 'municipality')
+      .leftJoinAndSelect('vr.infoSource', 'infoSource')
+      .leftJoinAndSelect('vr.travelType', 'travelType')
+      .leftJoinAndSelect('vr.tariff', 'tariff')
+      .leftJoinAndSelect('vr.visitReasons', 'visitReasons')
+      .leftJoinAndSelect('vr.visitActivities', 'visitActivities')
+      .leftJoinAndSelect('vr.createdByUser', 'createdByUser')
       .leftJoinAndSelect('vr.companions', 'companions')
       .leftJoinAndSelect('companions.visitorCategory', 'companionCategory')
       .orderBy('vr.createdAt', 'DESC');

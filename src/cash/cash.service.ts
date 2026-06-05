@@ -11,6 +11,7 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 import { CancelMovementDto } from './dto/cancel-movement.dto';
 import { QueryMovementDto } from './dto/query-movement.dto';
 import { CreateClosureDto } from './dto/create-closure.dto';
+import { guatemalaDateRangeUtc, guatemalaTodayISO, guatemalaTodayRangeUtc } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class CashService {
@@ -27,6 +28,13 @@ export class CashService {
     private readonly paymentMethodRepo: Repository<PaymentMethod>,
     private readonly auditService: AuditService,
   ) {}
+
+  private normalizeMovementRange(from?: string | Date, to?: string | Date): { from?: string | Date; to?: string | Date } {
+    return {
+      from: typeof from === 'string' ? guatemalaDateRangeUtc(from).from : from,
+      to: typeof to === 'string' ? guatemalaDateRangeUtc(undefined, to).to : to,
+    };
+  }
 
   // ─── MOVEMENTS ────────────────────────────────────────────────
 
@@ -45,10 +53,10 @@ export class CashService {
       .take(take);
 
     if (query.from) {
-      qb.andWhere('m.movementDate >= :from', { from: query.from });
+      qb.andWhere('m.movementDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
     }
     if (query.to) {
-      qb.andWhere('m.movementDate <= :to', { to: query.to });
+      qb.andWhere('m.movementDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     }
     if (query.movementType) {
       qb.andWhere('m.movementType = :movementType', { movementType: query.movementType });
@@ -183,14 +191,15 @@ export class CashService {
 
   // ─── SUMMARIES ────────────────────────────────────────────────
 
-  async getSummary(from?: string, to?: string) {
+  async getSummary(from?: string | Date, to?: string | Date) {
+    const range = this.normalizeMovementRange(from, to);
     const qb = this.movementRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.paymentMethod', 'paymentMethod')
       .where('m.status = :status', { status: 'ACTIVO' });
 
-    if (from) qb.andWhere('m.movementDate >= :from', { from });
-    if (to) qb.andWhere('m.movementDate <= :to', { to });
+    if (range.from) qb.andWhere('m.movementDate >= :from', { from: range.from });
+    if (range.to) qb.andWhere('m.movementDate <= :to', { to: range.to });
 
     const movements = await qb.getMany();
 
@@ -229,13 +238,12 @@ export class CashService {
   }
 
   async getTodaySummary() {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+    const { start, end } = guatemalaTodayRangeUtc();
     return this.getSummary(start, end);
   }
 
   async getIncomeSummary(from?: string, to?: string) {
+    const range = this.normalizeMovementRange(from, to);
     const qb = this.movementRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.concept', 'concept')
@@ -243,13 +251,14 @@ export class CashService {
       .where('m.status = :status', { status: 'ACTIVO' })
       .andWhere('m.movementType = :type', { type: 'INGRESO' });
 
-    if (from) qb.andWhere('m.movementDate >= :from', { from });
-    if (to) qb.andWhere('m.movementDate <= :to', { to });
+    if (range.from) qb.andWhere('m.movementDate >= :from', { from: range.from });
+    if (range.to) qb.andWhere('m.movementDate <= :to', { to: range.to });
 
     return qb.getMany();
   }
 
   async getExpenseSummary(from?: string, to?: string) {
+    const range = this.normalizeMovementRange(from, to);
     const qb = this.movementRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.concept', 'concept')
@@ -257,13 +266,14 @@ export class CashService {
       .where('m.status = :status', { status: 'ACTIVO' })
       .andWhere('m.movementType = :type', { type: 'EGRESO' });
 
-    if (from) qb.andWhere('m.movementDate >= :from', { from });
-    if (to) qb.andWhere('m.movementDate <= :to', { to });
+    if (range.from) qb.andWhere('m.movementDate >= :from', { from: range.from });
+    if (range.to) qb.andWhere('m.movementDate <= :to', { to: range.to });
 
     return qb.getMany();
   }
 
   async getByPaymentMethod(from?: string, to?: string) {
+    const range = this.normalizeMovementRange(from, to);
     const qb = this.movementRepo
       .createQueryBuilder('m')
       .select('m.paymentMethodId', 'paymentMethodId')
@@ -276,13 +286,14 @@ export class CashService {
       .addGroupBy('pm.name')
       .addGroupBy('m.movementType');
 
-    if (from) qb.andWhere('m.movementDate >= :from', { from });
-    if (to) qb.andWhere('m.movementDate <= :to', { to });
+    if (range.from) qb.andWhere('m.movementDate >= :from', { from: range.from });
+    if (range.to) qb.andWhere('m.movementDate <= :to', { to: range.to });
 
     return qb.getRawMany();
   }
 
   async getByService(from?: string, to?: string) {
+    const range = this.normalizeMovementRange(from, to);
     const qb = this.movementRepo
       .createQueryBuilder('m')
       .select('m.originType', 'originType')
@@ -291,8 +302,8 @@ export class CashService {
       .where('m.status = :status', { status: 'ACTIVO' })
       .groupBy('m.originType');
 
-    if (from) qb.andWhere('m.movementDate >= :from', { from });
-    if (to) qb.andWhere('m.movementDate <= :to', { to });
+    if (range.from) qb.andWhere('m.movementDate >= :from', { from: range.from });
+    if (range.to) qb.andWhere('m.movementDate <= :to', { to: range.to });
 
     return qb.getRawMany();
   }
@@ -376,11 +387,9 @@ export class CashService {
     const preview = await this.previewClosure();
 
     // Generate closure number
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const dateStr = guatemalaTodayISO().replace(/-/g, '');
 
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const { start: startOfDay, end: endOfDay } = guatemalaTodayRangeUtc();
     const countToday = await this.closureRepo
       .createQueryBuilder('c')
       .where('c.createdAt >= :start', { start: startOfDay })

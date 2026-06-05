@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { QueryVehicleDto } from './dto/query-vehicle.dto';
+import { guatemalaDateRangeUtc, guatemalaTodayRangeUtc } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class VehiclesService {
@@ -40,10 +41,10 @@ export class VehiclesService {
       .take(take);
 
     if (query.from) {
-      qb.andWhere('vr.checkInAt >= :from', { from: query.from });
+      qb.andWhere('vr.checkInAt >= :from', { from: guatemalaDateRangeUtc(query.from).from });
     }
     if (query.to) {
-      qb.andWhere('vr.checkInAt <= :to', { to: query.to + ' 23:59:59' });
+      qb.andWhere('vr.checkInAt <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     }
     if (query.vehicleTypeId) {
       qb.andWhere('vr.vehicleTypeId = :typeId', { typeId: query.vehicleTypeId });
@@ -86,9 +87,7 @@ export class VehiclesService {
   }
 
   async findToday(page = 1, limit = 20) {
-    const today = new Date().toISOString().slice(0, 10);
-    const start = new Date(`${today}T00:00:00.000`);
-    const end = new Date(`${today}T23:59:59.999`);
+    const { start, end } = guatemalaTodayRangeUtc();
     const take = Math.min(limit, 100);
     const qb = this.repo
       .createQueryBuilder('vr')
@@ -102,9 +101,7 @@ export class VehiclesService {
   }
 
   async todaySummary() {
-    const today = new Date().toISOString().slice(0, 10);
-    const start = new Date(`${today}T00:00:00.000`);
-    const end = new Date(`${today}T23:59:59.999`);
+    const { start, end } = guatemalaTodayRangeUtc();
 
     const totals = await this.repo
       .createQueryBuilder('vr')

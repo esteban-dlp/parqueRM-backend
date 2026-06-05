@@ -6,6 +6,13 @@ import { VehicleRecord } from '../database/entities/vehicle-record.entity';
 import { LodgingRecord } from '../database/entities/lodging-record.entity';
 import { FinancialMovement } from '../database/entities/financial-movement.entity';
 import { ParkConfig } from '../database/entities/park-config.entity';
+import {
+  guatemalaDateRangeUtc,
+  guatemalaDateStartUtc,
+  guatemalaDaysAgoISO,
+  guatemalaTodayISO,
+  guatemalaTodayRangeUtc,
+} from '../common/utils/guatemala-time';
 
 @Injectable()
 export class DashboardService {
@@ -23,11 +30,12 @@ export class DashboardService {
   ) {}
 
   private today() {
-    return new Date().toISOString().slice(0, 10);
+    return guatemalaTodayISO();
   }
 
   async getToday() {
     const today = this.today();
+    const { start, end } = guatemalaTodayRangeUtc();
 
     const [visitors, vehicles, lodging] = await Promise.all([
       this.visitorRepo
@@ -41,7 +49,7 @@ export class DashboardService {
         .createQueryBuilder('v')
         .select('COUNT(v.id)', 'count')
         .addSelect('SUM(v.totalAmount)', 'amount')
-        .where('CAST(v.checkInAt AS DATE) = :today', { today })
+        .where('v.checkInAt >= :start AND v.checkInAt <= :end', { start, end })
         .getRawOne(),
       this.lodgingRepo
         .createQueryBuilder('l')
@@ -52,7 +60,7 @@ export class DashboardService {
       this.movementRepo
         .createQueryBuilder('m')
         .select('SUM(m.amount)', 'income')
-        .where('CAST(m.movementDate AS DATE) = :today', { today })
+        .where('m.movementDate >= :start AND m.movementDate <= :end', { start, end })
         .andWhere("m.movementType = 'INGRESO'")
         .andWhere("m.status = 'ACTIVO'")
         .getRawOne(),
@@ -61,7 +69,7 @@ export class DashboardService {
     const incomeRow = await this.movementRepo
       .createQueryBuilder('m')
       .select('SUM(m.amount)', 'income')
-      .where('CAST(m.movementDate AS DATE) = :today', { today })
+      .where('m.movementDate >= :start AND m.movementDate <= :end', { start, end })
       .andWhere("m.movementType = 'INGRESO'")
       .andWhere("m.status = 'ACTIVO'")
       .getRawOne();
@@ -87,9 +95,7 @@ export class DashboardService {
 
   async getSummary() {
     const today = this.today();
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekStr = weekAgo.toISOString().slice(0, 10);
+    const weekStr = guatemalaDaysAgoISO(7);
 
     const todayData = await this.getToday();
     const occupancy = await this.getOccupancy();
@@ -104,7 +110,7 @@ export class DashboardService {
     const weekIncome = await this.movementRepo
       .createQueryBuilder('m')
       .select('SUM(m.amount)', 'income')
-      .where('CAST(m.movementDate AS DATE) >= :from', { from: weekStr })
+      .where('m.movementDate >= :from', { from: guatemalaDateStartUtc(weekStr) })
       .andWhere("m.movementType = 'INGRESO'")
       .andWhere("m.status = 'ACTIVO'")
       .getRawOne();
@@ -167,15 +173,13 @@ export class DashboardService {
     const today = this.today();
     const dateFrom = from ?? today;
     const dateTo = to ?? today;
+    const range = guatemalaDateRangeUtc(dateFrom, dateTo);
 
     const totals = await this.vehicleRepo
       .createQueryBuilder('v')
       .select('COUNT(v.id)', 'totalRecords')
       .addSelect('SUM(v.totalAmount)', 'totalAmount')
-      .where('CAST(v.checkInAt AS DATE) >= :from AND CAST(v.checkInAt AS DATE) <= :to', {
-        from: dateFrom,
-        to: dateTo,
-      })
+      .where('v.checkInAt >= :from AND v.checkInAt <= :to', range)
       .getRawOne();
 
     const byType = await this.vehicleRepo
@@ -184,10 +188,7 @@ export class DashboardService {
       .select('vt.name', 'type')
       .addSelect('COUNT(v.id)', 'records')
       .addSelect('SUM(v.totalAmount)', 'amount')
-      .where('CAST(v.checkInAt AS DATE) >= :from AND CAST(v.checkInAt AS DATE) <= :to', {
-        from: dateFrom,
-        to: dateTo,
-      })
+      .where('v.checkInAt >= :from AND v.checkInAt <= :to', range)
       .groupBy('vt.name')
       .getRawMany();
 
@@ -204,14 +205,12 @@ export class DashboardService {
     const today = this.today();
     const dateFrom = from ?? today;
     const dateTo = to ?? today;
+    const range = guatemalaDateRangeUtc(dateFrom, dateTo);
 
     const income = await this.movementRepo
       .createQueryBuilder('m')
       .select('SUM(m.amount)', 'total')
-      .where("CAST(m.movementDate AS DATE) >= :from AND CAST(m.movementDate AS DATE) <= :to", {
-        from: dateFrom,
-        to: dateTo,
-      })
+      .where('m.movementDate >= :from AND m.movementDate <= :to', range)
       .andWhere("m.movementType = 'INGRESO'")
       .andWhere("m.status = 'ACTIVO'")
       .getRawOne();
@@ -219,10 +218,7 @@ export class DashboardService {
     const expense = await this.movementRepo
       .createQueryBuilder('m')
       .select('SUM(m.amount)', 'total')
-      .where("CAST(m.movementDate AS DATE) >= :from AND CAST(m.movementDate AS DATE) <= :to", {
-        from: dateFrom,
-        to: dateTo,
-      })
+      .where('m.movementDate >= :from AND m.movementDate <= :to', range)
       .andWhere("m.movementType = 'EGRESO'")
       .andWhere("m.status = 'ACTIVO'")
       .getRawOne();
@@ -233,10 +229,7 @@ export class DashboardService {
       .select('pm.name', 'method')
       .addSelect('SUM(m.amount)', 'total')
       .addSelect('m.movementType', 'type')
-      .where("CAST(m.movementDate AS DATE) >= :from AND CAST(m.movementDate AS DATE) <= :to", {
-        from: dateFrom,
-        to: dateTo,
-      })
+      .where('m.movementDate >= :from AND m.movementDate <= :to', range)
       .andWhere("m.status = 'ACTIVO'")
       .groupBy('pm.name, m.movementType')
       .getRawMany();

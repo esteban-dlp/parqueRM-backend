@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { UpdateVisitorDto } from './dto/update-visitor.dto';
 import { QueryVisitorDto } from './dto/query-visitor.dto';
+import { guatemalaTodayISO } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class VisitorsService {
@@ -135,7 +136,7 @@ export class VisitorsService {
   }
 
   async findToday(page = 1, limit = 20) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;
     const [data, total] = await this.repo.findAndCount({
@@ -149,7 +150,7 @@ export class VisitorsService {
   }
 
   async todaySummary() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
 
     const totals = await this.repo
       .createQueryBuilder('vr')
@@ -185,7 +186,7 @@ export class VisitorsService {
   }
 
   async create(dto: CreateVisitorDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VisitorRecord> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
     const count = await this.repo.count();
     const sequence = String(count + 1).padStart(5, '0');
     const datePart = today.replace(/-/g, '');

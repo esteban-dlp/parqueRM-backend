@@ -42,7 +42,7 @@ export class AuthService {
     if (existing) {
       throw new ConflictException({
         code: ResponseCodes.CONFLICT,
-        message: 'Username already taken',
+        message: 'Ese nombre de usuario ya está en uso.',
       });
     }
 
@@ -52,7 +52,7 @@ export class AuthService {
       if (!role) {
         throw new NotFoundException({
           code: ResponseCodes.NOT_FOUND,
-          message: 'Role not found or inactive',
+          message: 'El rol seleccionado no existe o está inactivo.',
         });
       }
     } else {
@@ -63,7 +63,7 @@ export class AuthService {
       if (!role) {
         throw new NotFoundException({
           code: ResponseCodes.NOT_FOUND,
-          message: 'No active role found to assign. Contact an administrator.',
+          message: 'No hay roles activos para asignar. Contacta a un administrador.',
         });
       }
     }
@@ -113,17 +113,24 @@ export class AuthService {
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!user) {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_INVALID_CREDENTIALS,
-        message: 'Invalid credentials',
+        message: 'Usuario o contraseña incorrectos.',
+      });
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException({
+        code: ResponseCodes.AUTH_USER_INACTIVE,
+        message: 'Este usuario está desactivado. Solicita apoyo a un administrador.',
       });
     }
 
     if (!user.role || !user.role.isActive) {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_ROLE_INACTIVE,
-        message: 'Role is inactive',
+        message: 'El rol asignado a este usuario está inactivo. Solicita apoyo a un administrador.',
       });
     }
 
@@ -139,7 +146,7 @@ export class AuthService {
       });
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_INVALID_CREDENTIALS,
-        message: 'Invalid credentials',
+        message: 'Usuario o contraseña incorrectos.',
       });
     }
 
@@ -202,7 +209,7 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_INVALID_REFRESH,
-        message: 'Invalid or expired refresh token',
+        message: 'Tu sesión expiró. Inicia sesión nuevamente.',
       });
     }
 
@@ -213,15 +220,15 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException({
-        code: ResponseCodes.AUTH_INVALID_REFRESH,
-        message: 'User not found or inactive',
+        code: ResponseCodes.AUTH_USER_INACTIVE,
+        message: 'El usuario no existe o está desactivado.',
       });
     }
 
     if (!user.role || !user.role.isActive) {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_ROLE_INACTIVE,
-        message: 'Role is inactive',
+        message: 'El rol asignado a este usuario está inactivo.',
       });
     }
 
@@ -269,7 +276,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_INVALID_CREDENTIALS,
-        message: 'User not found',
+        message: 'No se encontró el usuario de la sesión.',
       });
     }
 
@@ -277,7 +284,7 @@ export class AuthService {
     if (!match) {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_PASSWORD_MISMATCH,
-        message: 'Current password is incorrect',
+        message: 'La contraseña actual no es correcta.',
       });
     }
 
@@ -302,7 +309,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException({
         code: ResponseCodes.AUTH_INVALID_CREDENTIALS,
-        message: 'User not found',
+        message: 'No se encontró el usuario de la sesión.',
       });
     }
 

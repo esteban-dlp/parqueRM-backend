@@ -11,6 +11,7 @@ import { CashService } from '../cash/cash.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { CancelReceiptDto } from './dto/cancel-receipt.dto';
 import { QueryReceiptDto } from './dto/query-receipt.dto';
+import { guatemalaDateRangeUtc, guatemalaTodayISO, guatemalaTodayRangeUtc } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class ReceiptsService {
@@ -145,10 +146,10 @@ export class ReceiptsService {
       .take(take);
 
     if (query.from) {
-      qb.andWhere('r.receiptDate >= :from', { from: query.from });
+      qb.andWhere('r.receiptDate >= :from', { from: guatemalaDateRangeUtc(query.from).from });
     }
     if (query.to) {
-      qb.andWhere('r.receiptDate <= :to', { to: query.to });
+      qb.andWhere('r.receiptDate <= :to', { to: guatemalaDateRangeUtc(undefined, query.to).to });
     }
     if (query.status) {
       qb.andWhere('r.status = :status', { status: query.status });
@@ -177,12 +178,10 @@ export class ReceiptsService {
   }
 
   async nextReceiptNumber(): Promise<string> {
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const dateStr = guatemalaTodayISO().replace(/-/g, '');
 
     // Count receipts created today
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const { start: startOfDay, end: endOfDay } = guatemalaTodayRangeUtc();
 
     const count = await this.receiptRepo
       .createQueryBuilder('r')

@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service';
 import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
 import { QueryLodgingDto } from './dto/query-lodging.dto';
+import { guatemalaTodayISO } from '../common/utils/guatemala-time';
 
 @Injectable()
 export class LodgingService {
@@ -57,7 +58,7 @@ export class LodgingService {
   }
 
   async findToday(page = 1, limit = 20) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
     const take = Math.min(limit, 100);
     const [data, total] = await this.repo.findAndCount({
       where: { recordDate: today },
@@ -70,7 +71,7 @@ export class LodgingService {
   }
 
   async todaySummary() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
     const totals = await this.repo
       .createQueryBuilder('lr')
       .select('COUNT(lr.id)', 'totalRecords')
@@ -129,7 +130,7 @@ export class LodgingService {
       ? dto.appliedRate
       : ((await this.resolvedTariffAmount(dto.tariffId ?? null, isForeign)) ?? dto.appliedRate);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = guatemalaTodayISO();
     const record = this.repo.create({
       lodgingTypeId: dto.lodgingTypeId,
       recordDate: dto.recordDate ?? today,

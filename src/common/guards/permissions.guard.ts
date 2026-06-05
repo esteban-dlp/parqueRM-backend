@@ -26,7 +26,7 @@ export class PermissionsGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException({
         code: ResponseCodes.AUTH_INSUFFICIENT_PERMISSIONS,
-        message: 'No authenticated user',
+        message: 'Debes iniciar sesión para realizar esta acción.',
       });
     }
 
@@ -35,7 +35,7 @@ export class PermissionsGuard implements CanActivate {
     if (!has) {
       throw new ForbiddenException({
         code: ResponseCodes.AUTH_INSUFFICIENT_PERMISSIONS,
-        message: 'Insufficient permissions',
+        message: 'No tienes permiso para realizar esta acción.',
         errors: { required, granted: user.permissions },
       });
     }

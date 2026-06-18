@@ -3,6 +3,8 @@ export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
 
   database: {
+    type: (process.env.DB_TYPE as 'sqlite' | 'better-sqlite3') ?? 'better-sqlite3',
+    path: process.env.DB_PATH,
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT ?? '1433', 10),
     user: process.env.DB_USER,

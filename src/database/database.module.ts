@@ -34,56 +34,68 @@ import { FinancialMovement } from './entities/financial-movement.entity';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'mssql' as const,
-        host: config.get<string>('database.host'),
-        port: config.get<number>('database.port'),
-        username: config.get<string>('database.user'),
-        password: config.get<string>('database.password'),
-        database: config.get<string>('database.name'),
-        synchronize: false,
-        autoLoadEntities: true,
-        retryAttempts: 10,
-        retryDelay: 3000,
-        entities: [
-          User,
-          Role,
-          Permission,
-          AuditLog,
-          ParkConfig,
-          Service,
-          Country,
-          Department,
-          Municipality,
-          VisitorCategory,
-          VehicleType,
-          LodgingType,
-          PaymentMethod,
-          FinancialConcept,
-          VisitReason,
-          VisitActivity,
-          InfoSource,
-          TravelType,
-          Tariff,
-          VisitorRecord,
-          VehicleRecord,
-          LodgingRecord,
-          Receipt,
-          ReceiptLine,
-          CashClosure,
-          CashClosureDetail,
-          FinancialMovement,
-        ],
-        options: {
-          encrypt: config.get<boolean>('database.encrypt') ?? false,
-          trustServerCertificate: config.get<boolean>('database.trustServerCert') ?? true,
-          enableArithAbort: true,
-        },
-        extra: {
-          connectionTimeout: 30000,
-          requestTimeout: 30000,
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const dbType =
+          config.get<'sqlite' | 'better-sqlite3'>('database.type') ?? 'better-sqlite3';
+        const dbPath = config.get<string>('database.path');
+
+        if (!dbPath) {
+          throw new Error('DB_PATH is required for SQLite');
+        }
+
+        return {
+          type: dbType,
+          database: dbPath,
+          synchronize: false,
+          autoLoadEntities: true,
+          retryAttempts: 10,
+          retryDelay: 3000,
+          entities: [
+            User,
+            Role,
+            Permission,
+            AuditLog,
+            ParkConfig,
+            Service,
+            Country,
+            Department,
+            Municipality,
+            VisitorCategory,
+            VehicleType,
+            LodgingType,
+            PaymentMethod,
+            FinancialConcept,
+            VisitReason,
+            VisitActivity,
+            InfoSource,
+            TravelType,
+            Tariff,
+            VisitorRecord,
+            VehicleRecord,
+            LodgingRecord,
+            Receipt,
+            ReceiptLine,
+            CashClosure,
+            CashClosureDetail,
+            FinancialMovement,
+          ],
+          prepareDatabase: (db: any) => {
+            if (typeof db.pragma === 'function') {
+              // better-sqlite3 synchronous API
+              db.pragma('journal_mode = WAL');
+              db.pragma('foreign_keys = ON');
+              db.pragma('busy_timeout = 5000');
+              db.pragma('synchronous = NORMAL');
+            } else if (typeof db.run === 'function') {
+              // sqlite3 API
+              db.run('PRAGMA journal_mode = WAL;');
+              db.run('PRAGMA foreign_keys = ON;');
+              db.run('PRAGMA busy_timeout = 5000;');
+              db.run('PRAGMA synchronous = NORMAL;');
+            }
+          },
+        };
+      },
     }),
   ],
 })

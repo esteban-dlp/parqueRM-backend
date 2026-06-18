@@ -4,7 +4,7 @@ import { VisitorCategory } from './visitor-category.entity';
 
 @Entity({ name: 'visitor_record_companions' })
 export class VisitorCompanion {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
   @Column({ name: 'visitor_record_id', type: 'int' })
@@ -30,9 +30,9 @@ export class VisitorCompanion {
   @Column({ name: 'total_amount', type: 'decimal', precision: 12, scale: 2 })
   totalAmount!: number;
 
-  @Column({ name: 'is_foreign', type: 'bit', default: false })
+  @Column({ name: 'is_foreign', type: 'boolean', default: false })
   isForeign!: boolean;
 
-  @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 }

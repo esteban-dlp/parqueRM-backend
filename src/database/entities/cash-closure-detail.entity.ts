@@ -3,7 +3,7 @@ import { CashClosure } from './cash-closure.entity';
 
 @Entity({ name: 'cash_closure_details' })
 export class CashClosureDetail {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
   @Column({ name: 'cash_closure_id', type: 'int' })
@@ -13,10 +13,10 @@ export class CashClosureDetail {
   @JoinColumn({ name: 'cash_closure_id' })
   cashClosure!: CashClosure;
 
-  @Column({ name: 'detail_type', type: 'nvarchar', length: 50 })
+  @Column({ name: 'detail_type', type: 'varchar', length: 50 })
   detailType!: 'MEDIO_PAGO' | 'SERVICIO' | 'CONCEPTO';
 
-  @Column({ name: 'label', type: 'nvarchar', length: 150 })
+  @Column({ name: 'label', type: 'varchar', length: 150 })
   label!: string;
 
   @Column({ name: 'total_amount', type: 'decimal', precision: 12, scale: 2, default: 0 })

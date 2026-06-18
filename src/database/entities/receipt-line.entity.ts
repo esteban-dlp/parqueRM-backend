@@ -3,7 +3,7 @@ import { Receipt } from './receipt.entity';
 
 @Entity({ name: 'receipt_lines' })
 export class ReceiptLine {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
   @Column({ name: 'receipt_id', type: 'int' })
@@ -13,7 +13,7 @@ export class ReceiptLine {
   @JoinColumn({ name: 'receipt_id' })
   receipt!: Receipt;
 
-  @Column({ name: 'description', type: 'nvarchar', length: 255 })
+  @Column({ name: 'description', type: 'varchar', length: 255 })
   description!: string;
 
   @Column({ name: 'quantity', type: 'decimal', precision: 12, scale: 2, default: 1 })

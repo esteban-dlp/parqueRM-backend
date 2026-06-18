@@ -7,10 +7,10 @@ import { User } from './user.entity';
 
 @Entity({ name: 'financial_movements' })
 export class FinancialMovement {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
-  @Column({ name: 'movement_type', type: 'nvarchar', length: 20 })
+  @Column({ name: 'movement_type', type: 'varchar', length: 20 })
   movementType!: 'INGRESO' | 'EGRESO';
 
   @Column({ name: 'concept_id', type: 'int' })
@@ -27,7 +27,7 @@ export class FinancialMovement {
   @JoinColumn({ name: 'payment_method_id' })
   paymentMethod!: PaymentMethod;
 
-  @Column({ name: 'origin_type', type: 'nvarchar', length: 50 })
+  @Column({ name: 'origin_type', type: 'varchar', length: 50 })
   originType!: string;
 
   @Column({ name: 'origin_id', type: 'int', nullable: true })
@@ -40,16 +40,16 @@ export class FinancialMovement {
   @JoinColumn({ name: 'receipt_id' })
   receipt!: Receipt | null;
 
-  @Column({ name: 'movement_date', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'movement_date', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   movementDate!: Date;
 
   @Column({ name: 'amount', type: 'decimal', precision: 12, scale: 2 })
   amount!: number;
 
-  @Column({ name: 'description', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'description', type: 'varchar', length: 500, nullable: true })
   description!: string | null;
 
-  @Column({ name: 'status', type: 'nvarchar', length: 30, default: 'ACTIVO' })
+  @Column({ name: 'status', type: 'varchar', length: 30, default: 'ACTIVO' })
   status!: string;
 
   @Column({ name: 'cash_closure_id', type: 'int', nullable: true })
@@ -73,15 +73,15 @@ export class FinancialMovement {
   @JoinColumn({ name: 'cancelled_by_user_id' })
   cancelledByUser!: User | null;
 
-  @Column({ name: 'cancelled_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'cancelled_at', type: 'datetime', nullable: true })
   cancelledAt!: Date | null;
 
-  @Column({ name: 'cancel_reason', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'cancel_reason', type: 'varchar', length: 500, nullable: true })
   cancelReason!: string | null;
 
-  @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 
-  @Column({ name: 'updated_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'updated_at', type: 'datetime', nullable: true })
   updatedAt!: Date | null;
 }

@@ -3,19 +3,19 @@ import { Role } from './role.entity';
 
 @Entity({ name: 'permissions' })
 export class Permission {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
-  @Column({ name: 'code', type: 'nvarchar', length: 100, unique: true })
+  @Column({ name: 'code', type: 'varchar', length: 100, unique: true })
   code!: string;
 
-  @Column({ name: 'name', type: 'nvarchar', length: 150 })
+  @Column({ name: 'name', type: 'varchar', length: 150 })
   name!: string;
 
-  @Column({ name: 'module', type: 'nvarchar', length: 100 })
+  @Column({ name: 'module', type: 'varchar', length: 100 })
   module!: string;
 
-  @Column({ name: 'description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'description', type: 'varchar', length: 255, nullable: true })
   description!: string | null;
 
   @ManyToMany(() => Role, (role) => role.permissions)

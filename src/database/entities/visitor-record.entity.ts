@@ -22,19 +22,19 @@ import { VisitActivity } from './visit-activity.entity';
 
 @Entity({ name: 'visitor_records' })
 export class VisitorRecord {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
-  @Column({ name: 'ticket_number', type: 'nvarchar', length: 50, unique: true })
+  @Column({ name: 'ticket_number', type: 'varchar', length: 50, unique: true })
   ticketNumber!: string;
 
   @Column({ name: 'record_date', type: 'date' })
   recordDate!: string;
 
-  @Column({ name: 'check_in_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'check_in_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   checkInAt!: Date;
 
-  @Column({ name: 'check_out_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'check_out_at', type: 'datetime', nullable: true })
   checkOutAt!: Date | null;
 
   @Column({ name: 'country_id', type: 'int', nullable: true })
@@ -72,25 +72,25 @@ export class VisitorRecord {
   @JoinColumn({ name: 'travel_type_id' })
   travelType!: TravelType | null;
 
-  @Column({ name: 'nationality', type: 'nvarchar', length: 120, nullable: true })
+  @Column({ name: 'nationality', type: 'varchar', length: 120, nullable: true })
   nationality!: string | null;
 
-  @Column({ name: 'identification_type', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'identification_type', type: 'varchar', length: 50, nullable: true })
   identificationType!: string | null;
 
-  @Column({ name: 'identification_number', type: 'nvarchar', length: 80, nullable: true })
+  @Column({ name: 'identification_number', type: 'varchar', length: 80, nullable: true })
   identificationNumber!: string | null;
 
-  @Column({ name: 'full_name', type: 'nvarchar', length: 150, nullable: true })
+  @Column({ name: 'full_name', type: 'varchar', length: 150, nullable: true })
   fullName!: string | null;
 
-  @Column({ name: 'email', type: 'nvarchar', length: 150, nullable: true })
+  @Column({ name: 'email', type: 'varchar', length: 150, nullable: true })
   email!: string | null;
 
-  @Column({ name: 'gender', type: 'nvarchar', length: 20, nullable: true })
+  @Column({ name: 'gender', type: 'varchar', length: 20, nullable: true })
   gender!: string | null;
 
-  @Column({ name: 'age_range', type: 'nvarchar', length: 20, nullable: true })
+  @Column({ name: 'age_range', type: 'varchar', length: 20, nullable: true })
   ageRange!: string | null;
 
   @Column({ name: 'visitor_category_id', type: 'int' })
@@ -116,19 +116,19 @@ export class VisitorRecord {
   @Column({ name: 'total_amount', type: 'decimal', precision: 12, scale: 2 })
   totalAmount!: number;
 
-  @Column({ name: 'visit_type', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'visit_type', type: 'varchar', length: 50, nullable: true })
   visitType!: string | null;
 
-  @Column({ name: 'observations', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'observations', type: 'varchar', length: 500, nullable: true })
   observations!: string | null;
 
-  @Column({ name: 'is_foreign', type: 'bit', default: false })
+  @Column({ name: 'is_foreign', type: 'boolean', default: false })
   isForeign!: boolean;
 
-  @Column({ name: 'source', type: 'nvarchar', length: 50, default: 'MANUAL' })
+  @Column({ name: 'source', type: 'varchar', length: 50, default: 'MANUAL' })
   source!: string;
 
-  @Column({ name: 'external_event_id', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'external_event_id', type: 'varchar', length: 100, nullable: true })
   externalEventId!: string | null;
 
   @Column({ name: 'created_by_user_id', type: 'int' })
@@ -138,10 +138,10 @@ export class VisitorRecord {
   @JoinColumn({ name: 'created_by_user_id' })
   createdByUser!: User;
 
-  @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 
-  @Column({ name: 'updated_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'updated_at', type: 'datetime', nullable: true })
   updatedAt!: Date | null;
 
   @ManyToMany(() => VisitReason)

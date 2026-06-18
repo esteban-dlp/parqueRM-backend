@@ -2,15 +2,15 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity({ name: 'services' })
 export class Service {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
-  @Column({ name: 'code', type: 'nvarchar', length: 80, unique: true })
+  @Column({ name: 'code', type: 'varchar', length: 80, unique: true })
   code!: string;
 
-  @Column({ name: 'name', type: 'nvarchar', length: 120 })
+  @Column({ name: 'name', type: 'varchar', length: 120 })
   name!: string;
 
-  @Column({ name: 'is_enabled', type: 'bit', default: true })
+  @Column({ name: 'is_enabled', type: 'boolean', default: true })
   isEnabled!: boolean;
 }

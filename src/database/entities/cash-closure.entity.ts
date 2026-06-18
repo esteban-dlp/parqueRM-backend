@@ -4,13 +4,13 @@ import { CashClosureDetail } from './cash-closure-detail.entity';
 
 @Entity({ name: 'cash_closures' })
 export class CashClosure {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
-  @Column({ name: 'closure_number', type: 'nvarchar', length: 50, unique: true })
+  @Column({ name: 'closure_number', type: 'varchar', length: 50, unique: true })
   closureNumber!: string;
 
-  @Column({ name: 'closed_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'closed_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   closedAt!: Date;
 
   @Column({ name: 'total_income', type: 'decimal', precision: 12, scale: 2, default: 0 })
@@ -22,7 +22,7 @@ export class CashClosure {
   @Column({ name: 'total_net', type: 'decimal', precision: 12, scale: 2, default: 0 })
   totalNet!: number;
 
-  @Column({ name: 'observations', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'observations', type: 'varchar', length: 500, nullable: true })
   observations!: string | null;
 
   @Column({ name: 'closed_by_user_id', type: 'int' })
@@ -32,7 +32,7 @@ export class CashClosure {
   @JoinColumn({ name: 'closed_by_user_id' })
   closedByUser!: User;
 
-  @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 
   @OneToMany(() => CashClosureDetail, (d) => d.cashClosure, { cascade: true })

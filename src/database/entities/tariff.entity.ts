@@ -6,7 +6,7 @@ import { LodgingType } from './lodging-type.entity';
 
 @Entity({ name: 'tariffs' })
 export class Tariff {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
   @Column({ name: 'service_id', type: 'int' })
@@ -37,10 +37,10 @@ export class Tariff {
   @JoinColumn({ name: 'lodging_type_id' })
   lodgingType!: LodgingType | null;
 
-  @Column({ name: 'name', type: 'nvarchar', length: 150 })
+  @Column({ name: 'name', type: 'varchar', length: 150 })
   name!: string;
 
-  @Column({ name: 'applies_to', type: 'nvarchar', length: 50 })
+  @Column({ name: 'applies_to', type: 'varchar', length: 50 })
   appliesTo!: 'VISITANTE' | 'VEHICULO' | 'HOSPEDAJE' | 'SERVICIO';
 
   @Column({ name: 'amount_local', type: 'decimal', precision: 12, scale: 2 })
@@ -49,7 +49,7 @@ export class Tariff {
   @Column({ name: 'amount_foreign', type: 'decimal', precision: 12, scale: 2, default: 0 })
   amountForeign!: number;
 
-  @Column({ name: 'is_active', type: 'bit', default: true })
+  @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
 
   @Column({ name: 'valid_from', type: 'date' })
@@ -58,6 +58,6 @@ export class Tariff {
   @Column({ name: 'valid_to', type: 'date', nullable: true })
   validTo!: string | null;
 
-  @Column({ name: 'deleted_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'deleted_at', type: 'datetime', nullable: true })
   deletedAt!: Date | null;
 }

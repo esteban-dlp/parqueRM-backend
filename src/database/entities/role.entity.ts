@@ -11,25 +11,25 @@ import { User } from './user.entity';
 
 @Entity({ name: 'roles' })
 export class Role {
-  @PrimaryGeneratedColumn({ name: 'id', type: 'int' })
+  @PrimaryGeneratedColumn('increment', { name: 'id' })
   id!: number;
 
-  @Column({ name: 'name', type: 'nvarchar', length: 100, unique: true })
+  @Column({ name: 'name', type: 'varchar', length: 100, unique: true })
   name!: string;
 
-  @Column({ name: 'description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'description', type: 'varchar', length: 255, nullable: true })
   description!: string | null;
 
-  @Column({ name: 'is_active', type: 'bit', default: true })
+  @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
 
-  @Column({ name: 'created_at', type: 'datetime2', default: () => 'SYSDATETIME()' })
+  @Column({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 
-  @Column({ name: 'updated_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'updated_at', type: 'datetime', nullable: true })
   updatedAt!: Date | null;
 
-  @Column({ name: 'deleted_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'deleted_at', type: 'datetime', nullable: true })
   deletedAt!: Date | null;
 
   @ManyToMany(() => Permission, (permission) => permission.roles, { cascade: false })

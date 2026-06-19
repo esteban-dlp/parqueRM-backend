@@ -48,18 +48,28 @@ export class ReportsController {
 
   @Get('visitors/export/excel')
   @RequirePermissions('REPORTES_EXPORT')
-  @ApiOperation({ summary: 'Export visitor report as Excel (data for frontend rendering)' })
+  @ApiOperation({
+    summary: 'Export visitor report as Excel (data for frontend rendering)',
+  })
   async exportVisitorsExcel(@Query() query: QueryReportDto) {
     const result = await this.reportsService.getVisitors(query);
-    return this.responses.ok({ ...result, export: true, format: 'excel' }, 'Visitors export data');
+    return this.responses.ok(
+      { ...result, export: true, format: 'excel' },
+      'Visitors export data',
+    );
   }
 
   @Get('visitors/export/pdf')
   @RequirePermissions('REPORTES_EXPORT')
-  @ApiOperation({ summary: 'Export visitor report as PDF (data for frontend rendering)' })
+  @ApiOperation({
+    summary: 'Export visitor report as PDF (data for frontend rendering)',
+  })
   async exportVisitorsPdf(@Query() query: QueryReportDto) {
     const result = await this.reportsService.getVisitors(query);
-    return this.responses.ok({ ...result, export: true, format: 'pdf' }, 'Visitors export data');
+    return this.responses.ok(
+      { ...result, export: true, format: 'pdf' },
+      'Visitors export data',
+    );
   }
 
   @Get('visitors')
@@ -86,12 +96,45 @@ export class ReportsController {
     return this.responses.ok(result.data, 'Lodging report', result.meta);
   }
 
+  @Get('cash-by-payment-method')
+  @RequirePermissions('REPORTES_READ')
+  @ApiOperation({ summary: 'Daily income totals grouped by payment method' })
+  async getCashByPaymentMethod(@Query() query: QueryReportDto) {
+    const data = await this.reportsService.getCashByPaymentMethod(query);
+    return this.responses.ok(data, 'Cash by payment method report');
+  }
+
+  @Get('income-by-origin')
+  @RequirePermissions('REPORTES_READ')
+  @ApiOperation({
+    summary:
+      'Income totals grouped by origin type (visitantes, vehiculos, hospedaje, etc.)',
+  })
+  async getIncomeByOriginType(@Query() query: QueryReportDto) {
+    const data = await this.reportsService.getIncomeByOriginType(query);
+    return this.responses.ok(data, 'Income by origin type report');
+  }
+
+  @Get('surveys')
+  @RequirePermissions('SURVEYS_REPORT_READ')
+  @ApiOperation({
+    summary:
+      'Survey report: occurrences, dominant answer and percentage per question',
+  })
+  async getSurveyReport(@Query() query: QueryReportDto) {
+    const data = await this.reportsService.getSurveyReport(query);
+    return this.responses.ok(data, 'Survey report');
+  }
+
   @Get('income/export/excel')
   @RequirePermissions('REPORTES_EXPORT')
   @ApiOperation({ summary: 'Export income report as Excel' })
   async exportIncomeExcel(@Query() query: QueryReportDto) {
     const result = await this.reportsService.getIncome(query);
-    return this.responses.ok({ ...result, export: true, format: 'excel' }, 'Income export data');
+    return this.responses.ok(
+      { ...result, export: true, format: 'excel' },
+      'Income export data',
+    );
   }
 
   @Get('income/export/pdf')
@@ -99,7 +142,10 @@ export class ReportsController {
   @ApiOperation({ summary: 'Export income report as PDF' })
   async exportIncomePdf(@Query() query: QueryReportDto) {
     const result = await this.reportsService.getIncome(query);
-    return this.responses.ok({ ...result, export: true, format: 'pdf' }, 'Income export data');
+    return this.responses.ok(
+      { ...result, export: true, format: 'pdf' },
+      'Income export data',
+    );
   }
 
   @Get('income')
@@ -123,7 +169,10 @@ export class ReportsController {
   @ApiOperation({ summary: 'Export cash closures report as Excel' })
   async exportCashClosuresExcel(@Query() query: QueryReportDto) {
     const result = await this.reportsService.getCashClosures(query);
-    return this.responses.ok({ ...result, export: true, format: 'excel' }, 'Cash closures export data');
+    return this.responses.ok(
+      { ...result, export: true, format: 'excel' },
+      'Cash closures export data',
+    );
   }
 
   @Get('cash-closures/export/pdf')
@@ -131,7 +180,10 @@ export class ReportsController {
   @ApiOperation({ summary: 'Export cash closures report as PDF' })
   async exportCashClosuresPdf(@Query() query: QueryReportDto) {
     const result = await this.reportsService.getCashClosures(query);
-    return this.responses.ok({ ...result, export: true, format: 'pdf' }, 'Cash closures export data');
+    return this.responses.ok(
+      { ...result, export: true, format: 'pdf' },
+      'Cash closures export data',
+    );
   }
 
   @Get('cash-closures')
@@ -155,7 +207,10 @@ export class ReportsController {
   @ApiOperation({ summary: 'Export general report as Excel' })
   async exportExcel(@Query() query: QueryReportDto) {
     const data = await this.reportsService.getGeneral(query);
-    return this.responses.ok({ ...data, export: true, format: 'excel' }, 'General export data');
+    return this.responses.ok(
+      { ...data, export: true, format: 'excel' },
+      'General export data',
+    );
   }
 
   @Get('export/pdf')
@@ -163,6 +218,9 @@ export class ReportsController {
   @ApiOperation({ summary: 'Export general report as PDF' })
   async exportPdf(@Query() query: QueryReportDto) {
     const data = await this.reportsService.getGeneral(query);
-    return this.responses.ok({ ...data, export: true, format: 'pdf' }, 'General export data');
+    return this.responses.ok(
+      { ...data, export: true, format: 'pdf' },
+      'General export data',
+    );
   }
 }

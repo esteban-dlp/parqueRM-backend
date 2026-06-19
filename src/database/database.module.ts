@@ -28,6 +28,9 @@ import { ReceiptLine } from './entities/receipt-line.entity';
 import { CashClosure } from './entities/cash-closure.entity';
 import { CashClosureDetail } from './entities/cash-closure-detail.entity';
 import { FinancialMovement } from './entities/financial-movement.entity';
+import { SurveyQuestion } from './entities/survey-question.entity';
+import { SurveyResponse } from './entities/survey-response.entity';
+import { SurveyAnswer } from './entities/survey-answer.entity';
 
 @Module({
   imports: [
@@ -78,6 +81,9 @@ import { FinancialMovement } from './entities/financial-movement.entity';
             CashClosure,
             CashClosureDetail,
             FinancialMovement,
+            SurveyQuestion,
+            SurveyResponse,
+            SurveyAnswer,
           ],
           prepareDatabase: (db: any) => {
             if (typeof db.pragma === 'function') {

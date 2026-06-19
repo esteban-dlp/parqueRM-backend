@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsArray, IsInt, IsOptional, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class QueryReportDto extends PaginationDto {
@@ -53,4 +53,17 @@ export class QueryReportDto extends PaginationDto {
   @Type(() => Number)
   @IsInt()
   lodgingTypeId?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Origin types to filter income by (VISITANTE, VEHICULO, HOSPEDAJE, SERVICIO_GENERAL, MOVIMIENTO_MANUAL). Omit for all.',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @Transform(({ value }: { value: unknown }): unknown[] =>
+    Array.isArray(value) ? value : [value],
+  )
+  @IsString({ each: true })
+  originTypes?: string[];
 }

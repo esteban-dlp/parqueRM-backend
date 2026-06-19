@@ -23,6 +23,7 @@ import { ReceiptsModule } from './receipts/receipts.module';
 import { CashModule } from './cash/cash.module';
 import { ReportsModule } from './reports/reports.module';
 import { PrintsModule } from './prints/prints.module';
+import { SurveysModule } from './surveys/surveys.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { PrintsModule } from './prints/prints.module';
     CashModule,
     ReportsModule,
     PrintsModule,
+    SurveysModule,
   ],
   providers: [
     {

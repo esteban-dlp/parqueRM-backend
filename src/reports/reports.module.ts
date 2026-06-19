@@ -6,6 +6,8 @@ import { LodgingRecord } from '../database/entities/lodging-record.entity';
 import { FinancialMovement } from '../database/entities/financial-movement.entity';
 import { CashClosure } from '../database/entities/cash-closure.entity';
 import { Receipt } from '../database/entities/receipt.entity';
+import { SurveyQuestion } from '../database/entities/survey-question.entity';
+import { SurveyAnswer } from '../database/entities/survey-answer.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 
@@ -18,6 +20,8 @@ import { ReportsController } from './reports.controller';
       FinancialMovement,
       CashClosure,
       Receipt,
+      SurveyQuestion,
+      SurveyAnswer,
     ]),
   ],
   providers: [ReportsService],

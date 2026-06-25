@@ -24,6 +24,7 @@ import { CashModule } from './cash/cash.module';
 import { ReportsModule } from './reports/reports.module';
 import { PrintsModule } from './prints/prints.module';
 import { SurveysModule } from './surveys/surveys.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SurveysModule } from './surveys/surveys.module';
     ReportsModule,
     PrintsModule,
     SurveysModule,
+    SystemModule,
   ],
   providers: [
     {

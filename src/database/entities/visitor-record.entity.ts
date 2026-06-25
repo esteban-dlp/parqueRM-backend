@@ -131,6 +131,27 @@ export class VisitorRecord {
   @Column({ name: 'external_event_id', type: 'varchar', length: 100, nullable: true })
   externalEventId!: string | null;
 
+  @Column({ name: 'has_medication_allergy', type: 'boolean', default: false })
+  hasMedicationAllergy!: boolean;
+
+  @Column({ name: 'medication_allergy_detail', type: 'varchar', length: 500, nullable: true })
+  medicationAllergyDetail!: string | null;
+
+  @Column({ name: 'has_diabetes', type: 'boolean', default: false })
+  hasDiabetes!: boolean;
+
+  @Column({ name: 'has_hypertension', type: 'boolean', default: false })
+  hasHypertension!: boolean;
+
+  @Column({ name: 'has_respiratory_disease', type: 'boolean', default: false })
+  hasRespiratoryDisease!: boolean;
+
+  @Column({ name: 'has_animal_bite_allergy', type: 'boolean', default: false })
+  hasAnimalBiteAllergy!: boolean;
+
+  @Column({ name: 'animal_bite_allergy_detail', type: 'varchar', length: 500, nullable: true })
+  animalBiteAllergyDetail!: string | null;
+
   @Column({ name: 'created_by_user_id', type: 'int' })
   createdByUserId!: number;
 

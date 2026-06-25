@@ -154,4 +154,39 @@ export class CreateVisitorDto {
   @ValidateNested({ each: true })
   @Type(() => CreateVisitorCompanionDto)
   companions?: CreateVisitorCompanionDto[];
+
+  @ApiPropertyOptional({ description: '¿Es alérgico a algún medicamento?' })
+  @IsOptional()
+  @IsBoolean()
+  hasMedicationAllergy?: boolean;
+
+  @ApiPropertyOptional({ description: 'Detalle de alergia a medicamento', maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  medicationAllergyDetail?: string;
+
+  @ApiPropertyOptional({ description: '¿Es diabético?' })
+  @IsOptional()
+  @IsBoolean()
+  hasDiabetes?: boolean;
+
+  @ApiPropertyOptional({ description: '¿Padece de presión arterial alta (hipertensión)?' })
+  @IsOptional()
+  @IsBoolean()
+  hasHypertension?: boolean;
+
+  @ApiPropertyOptional({ description: '¿Padece de asma u otra enfermedad respiratoria?' })
+  @IsOptional()
+  @IsBoolean()
+  hasRespiratoryDisease?: boolean;
+
+  @ApiPropertyOptional({ description: '¿Es alérgico a la picadura de algún animal?' })
+  @IsOptional()
+  @IsBoolean()
+  hasAnimalBiteAllergy?: boolean;
+
+  @ApiPropertyOptional({ description: 'Detalle de alergia a picadura de animal', maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  animalBiteAllergyDetail?: string;
 }

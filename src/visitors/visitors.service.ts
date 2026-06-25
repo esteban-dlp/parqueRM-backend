@@ -223,6 +223,13 @@ export class VisitorsService {
       visitType: dto.visitType ?? null,
       observations: dto.observations ?? null,
       source: dto.source ?? 'MANUAL',
+      hasMedicationAllergy: dto.hasMedicationAllergy ?? false,
+      medicationAllergyDetail: dto.medicationAllergyDetail ?? null,
+      hasDiabetes: dto.hasDiabetes ?? false,
+      hasHypertension: dto.hasHypertension ?? false,
+      hasRespiratoryDisease: dto.hasRespiratoryDisease ?? false,
+      hasAnimalBiteAllergy: dto.hasAnimalBiteAllergy ?? false,
+      animalBiteAllergyDetail: dto.animalBiteAllergyDetail ?? null,
       createdByUserId: userId,
     });
 
@@ -303,6 +310,13 @@ export class VisitorsService {
     if (dto.ageRange !== undefined) record.ageRange = dto.ageRange ?? null;
     if (dto.visitType !== undefined) record.visitType = dto.visitType ?? null;
     if (dto.observations !== undefined) record.observations = dto.observations ?? null;
+    if (dto.hasMedicationAllergy !== undefined) record.hasMedicationAllergy = dto.hasMedicationAllergy;
+    if (dto.medicationAllergyDetail !== undefined) record.medicationAllergyDetail = dto.medicationAllergyDetail ?? null;
+    if (dto.hasDiabetes !== undefined) record.hasDiabetes = dto.hasDiabetes;
+    if (dto.hasHypertension !== undefined) record.hasHypertension = dto.hasHypertension;
+    if (dto.hasRespiratoryDisease !== undefined) record.hasRespiratoryDisease = dto.hasRespiratoryDisease;
+    if (dto.hasAnimalBiteAllergy !== undefined) record.hasAnimalBiteAllergy = dto.hasAnimalBiteAllergy;
+    if (dto.animalBiteAllergyDetail !== undefined) record.animalBiteAllergyDetail = dto.animalBiteAllergyDetail ?? null;
 
     if (dto.reasonIds !== undefined) {
       record.visitReasons = dto.reasonIds.map((rid) => ({ id: rid } as VisitReason));

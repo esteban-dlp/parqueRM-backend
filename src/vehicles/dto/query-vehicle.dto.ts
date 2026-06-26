@@ -20,6 +20,12 @@ export class QueryVehicleDto extends PaginationDto {
   @Type(() => Number)
   vehicleTypeId?: number;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  visitorRecordId?: number;
+
   @ApiPropertyOptional({ description: "'true' = only currently parked (no check-out)" })
   @IsOptional()
   @IsString()

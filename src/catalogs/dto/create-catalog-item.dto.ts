@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateCatalogItemDto {
@@ -19,6 +20,7 @@ export class CreateCatalogItemDto {
 
   @ApiPropertyOptional({ description: 'Only for municipalities' })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   departmentId?: number;
 }

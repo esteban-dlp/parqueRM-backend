@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { LodgingRecord } from '../database/entities/lodging-record.entity';
 import { Tariff } from '../database/entities/tariff.entity';
+import { Receipt } from '../database/entities/receipt.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
@@ -16,6 +17,8 @@ export class LodgingService {
     private readonly repo: Repository<LodgingRecord>,
     @InjectRepository(Tariff)
     private readonly tariffRepo: Repository<Tariff>,
+    @InjectRepository(Receipt)
+    private readonly receiptRepo: Repository<Receipt>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -24,6 +27,42 @@ export class LodgingService {
     const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
     if (!tariff) return null;
     return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
+  }
+
+  private async attachPaymentStatus<T extends LodgingRecord>(records: T[]): Promise<T[]> {
+    if (!records.length) return records;
+    const ids = records.map((r) => r.id);
+    const receipts = await this.receiptRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.lines', 'line')
+      .where('r.status = :status', { status: 'ACTIVO' })
+      .andWhere(new Brackets((qb) => {
+        qb.where('(r.originType = :originType AND r.originId IN (:...ids))')
+          .orWhere('(line.originType = :originType AND line.originId IN (:...ids))');
+      }))
+      .setParameters({ originType: 'HOSPEDAJE', ids })
+      .getMany();
+
+    const receiptByRecord = new Map<number, Receipt>();
+    for (const receipt of receipts) {
+      if (receipt.originType === 'HOSPEDAJE' && receipt.originId != null) {
+        receiptByRecord.set(Number(receipt.originId), receipt);
+      }
+      for (const line of receipt.lines ?? []) {
+        if (line.originType === 'HOSPEDAJE' && line.originId != null) {
+          receiptByRecord.set(Number(line.originId), receipt);
+        }
+      }
+    }
+
+    return records.map((record) => {
+      const receipt = receiptByRecord.get(record.id) ?? null;
+      return Object.assign(record, {
+        isPaid: Boolean(receipt),
+        receiptId: receipt?.id ?? null,
+        receipt,
+      });
+    });
   }
 
   async findAll(query: QueryLodgingDto) {
@@ -45,7 +84,7 @@ export class LodgingService {
     if (query.lodgingTypeId) qb.andWhere('lr.lodgingTypeId = :typeId', { typeId: query.lodgingTypeId });
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async findById(id: number): Promise<LodgingRecord> {
@@ -54,7 +93,7 @@ export class LodgingService {
       relations: ['lodgingType', 'tariff', 'createdByUser'],
     });
     if (!record) throw new NotFoundException(`Lodging record #${id} not found`);
-    return record;
+    return (await this.attachPaymentStatus([record]))[0];
   }
 
   async findToday(page = 1, limit = 20) {
@@ -67,7 +106,7 @@ export class LodgingService {
       skip: (page - 1) * take,
       take,
     });
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async todaySummary() {

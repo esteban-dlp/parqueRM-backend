@@ -8,6 +8,7 @@ import { CashClosure } from '../database/entities/cash-closure.entity';
 import { Receipt } from '../database/entities/receipt.entity';
 import { SurveyQuestion } from '../database/entities/survey-question.entity';
 import { SurveyAnswer } from '../database/entities/survey-answer.entity';
+import { SurveyResponse } from '../database/entities/survey-response.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 
@@ -22,6 +23,7 @@ import { ReportsController } from './reports.controller';
       Receipt,
       SurveyQuestion,
       SurveyAnswer,
+      SurveyResponse,
     ]),
   ],
   providers: [ReportsService],

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Receipt } from '../database/entities/receipt.entity';
 import { ReceiptLine } from '../database/entities/receipt-line.entity';
 import { PaymentMethod } from '../database/entities/payment-method.entity';
@@ -12,6 +12,8 @@ import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { CancelReceiptDto } from './dto/cancel-receipt.dto';
 import { QueryReceiptDto } from './dto/query-receipt.dto';
 import { guatemalaDateRangeUtc, guatemalaTodayISO, guatemalaTodayRangeUtc } from '../common/utils/guatemala-time';
+
+type ChargeTarget = { originType: string; originId: number };
 
 @Injectable()
 export class ReceiptsService {
@@ -52,6 +54,46 @@ export class ReceiptsService {
     return this.conceptCache.get(conceptName) ?? null;
   }
 
+  private getChargeTargets(dto: CreateReceiptDto): ChargeTarget[] {
+    const byKey = new Map<string, ChargeTarget>();
+    const add = (originType?: string | null, originId?: number | null) => {
+      if (!originType || originId == null) return;
+      const key = `${originType}:${originId}`;
+      byKey.set(key, { originType, originId: Number(originId) });
+    };
+
+    add(dto.originType, dto.originId ?? null);
+    for (const line of dto.lines ?? []) {
+      add(line.originType ?? dto.originType, line.originId ?? null);
+    }
+
+    return Array.from(byKey.values());
+  }
+
+  private async findActiveReceiptForTarget(target: ChargeTarget): Promise<Receipt | null> {
+    return this.receiptRepo
+      .createQueryBuilder('r')
+      .leftJoin('r.lines', 'line')
+      .where('r.status = :status', { status: 'ACTIVO' })
+      .andWhere(new Brackets((qb) => {
+        qb.where('(r.originType = :originType AND r.originId = :originId)')
+          .orWhere('(line.originType = :originType AND line.originId = :originId)');
+      }))
+      .setParameters({ originType: target.originType, originId: target.originId })
+      .getOne();
+  }
+
+  private async assertNoActiveCharge(dto: CreateReceiptDto): Promise<void> {
+    for (const target of this.getChargeTargets(dto)) {
+      const existing = await this.findActiveReceiptForTarget(target);
+      if (existing) {
+        throw new BadRequestException(
+          `El registro ${target.originType} #${target.originId} ya tiene un ticket activo (${existing.receiptNumber}). Anule ese ticket antes de cobrar nuevamente.`,
+        );
+      }
+    }
+  }
+
   private async autoCreateMovement(receipt: Receipt, userId: number, ip?: string): Promise<void> {
     try {
       const existing = await this.movementRepo.findOne({
@@ -59,26 +101,68 @@ export class ReceiptsService {
       });
       if (existing) return;
 
-      const conceptId = await this.resolveConceptId(receipt.originType);
-      if (!conceptId) {
-        this.logger.warn(`No active INGRESO concept found for originType=${receipt.originType}, skipping movement`);
+      const lines = receipt.lines?.length
+        ? receipt.lines
+        : [this.lineRepo.create({
+          receiptId: receipt.id,
+          description: `Recibo ${receipt.receiptNumber}`,
+          quantity: 1,
+          unitPrice: Number(receipt.total),
+          total: Number(receipt.total),
+          originType: receipt.originType,
+          originId: receipt.originId,
+        })];
+
+      const rawSubtotal = lines.reduce((sum, line) => sum + Number(line.total ?? 0), 0);
+      const subtotal = Number(receipt.subtotal ?? rawSubtotal);
+      const receiptTotal = Number(receipt.total);
+
+      if (receiptTotal <= 0) {
         return;
       }
 
-      await this.cashService.createMovement(
-        {
-          movementType: 'INGRESO',
-          conceptId,
-          paymentMethodId: receipt.paymentMethodId,
-          originType: receipt.originType as any,
-          originId: receipt.originId ?? undefined,
-          receiptId: receipt.id,
-          amount: Number(receipt.total),
-          description: `Recibo ${receipt.receiptNumber}`,
-        },
-        userId,
-        ip,
-      );
+      let allocated = 0;
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        const lineTotal = Number(line.total ?? 0);
+        const isLast = i === lines.length - 1;
+        let amount = subtotal > 0
+          ? (lineTotal / subtotal) * receiptTotal
+          : lineTotal;
+        amount = isLast ? receiptTotal - allocated : parseFloat(amount.toFixed(2));
+        amount = parseFloat(Math.max(0, amount).toFixed(2));
+        allocated = parseFloat((allocated + amount).toFixed(2));
+
+        if (amount <= 0) continue;
+
+        const originType = line.originType ?? receipt.originType;
+        const originId = line.originId ?? receipt.originId ?? undefined;
+        const conceptId = line.conceptId ?? await this.resolveConceptId(originType);
+        if (!conceptId) {
+          this.logger.warn(`No active INGRESO concept found for originType=${originType}, skipping movement line`);
+          continue;
+        }
+
+        await this.cashService.createMovement(
+          {
+            movementType: 'INGRESO',
+            conceptId,
+            paymentMethodId: receipt.paymentMethodId,
+            originType: originType as any,
+            originId,
+            receiptId: receipt.id,
+            amount,
+            description: `${receipt.receiptNumber} - ${line.description}`,
+          },
+          userId,
+          ip,
+        );
+      }
+
+      if (allocated <= 0) {
+        this.logger.warn(`Receipt #${receipt.id} generated no cash movements`);
+        return;
+      }
     } catch (err) {
       this.logger.error(`autoCreateMovement failed for receipt #${receipt.id}: ${err?.message}`);
       await this.auditService.record({
@@ -94,30 +178,32 @@ export class ReceiptsService {
 
   private async autoCancelMovement(receiptId: number, cancelReason: string, userId: number, ip?: string): Promise<void> {
     try {
-      const movement = await this.movementRepo.findOne({
+      const movements = await this.movementRepo.find({
         where: { receiptId, status: 'ACTIVO' },
       });
-      if (!movement) return;
+      if (!movements.length) return;
 
-      if (movement.cashClosureId !== null) {
-        this.logger.warn(`Movement #${movement.id} belongs to a closed cash period, skipping cancellation`);
-        await this.auditService.record({
+      for (const movement of movements) {
+        if (movement.cashClosureId !== null) {
+          this.logger.warn(`Movement #${movement.id} belongs to a closed cash period, skipping cancellation`);
+          await this.auditService.record({
+            userId,
+            action: 'RECEIPT_CANCELLED_MOVEMENT_LOCKED',
+            entityName: 'FinancialMovement',
+            entityId: movement.id,
+            newValues: { receiptId, cashClosureId: movement.cashClosureId, cancelReason },
+            ipAddress: ip,
+          });
+          continue;
+        }
+
+        await this.cashService.cancelMovement(
+          movement.id,
+          { cancelReason },
           userId,
-          action: 'RECEIPT_CANCELLED_MOVEMENT_LOCKED',
-          entityName: 'FinancialMovement',
-          entityId: movement.id,
-          newValues: { receiptId, cashClosureId: movement.cashClosureId, cancelReason },
-          ipAddress: ip,
-        });
-        return;
+          ip,
+        );
       }
-
-      await this.cashService.cancelMovement(
-        movement.id,
-        { cancelReason },
-        userId,
-        ip,
-      );
     } catch (err) {
       this.logger.error(`autoCancelMovement failed for receipt #${receiptId}: ${err?.message}`);
       await this.auditService.record({
@@ -171,7 +257,7 @@ export class ReceiptsService {
   async findById(id: number): Promise<Receipt> {
     const receipt = await this.receiptRepo.findOne({
       where: { id },
-      relations: ['paymentMethod', 'createdByUser', 'cancelledByUser', 'lines'],
+      relations: ['paymentMethod', 'createdByUser', 'cancelledByUser', 'lines', 'lines.concept'],
     });
     if (!receipt) throw new NotFoundException(`Receipt #${id} not found`);
     return receipt;
@@ -194,6 +280,8 @@ export class ReceiptsService {
   }
 
   async create(dto: CreateReceiptDto, userId: number, ip?: string): Promise<Receipt> {
+    await this.assertNoActiveCharge(dto);
+
     const receiptNumber = dto.receiptNumber ?? (await this.nextReceiptNumber());
 
     const subtotalVal = dto.subtotal ?? dto.total;
@@ -237,6 +325,9 @@ export class ReceiptsService {
       const lines = dto.lines.map((l) =>
         this.lineRepo.create({
           receiptId: saved.id,
+          conceptId: l.conceptId ?? null,
+          originType: l.originType ?? dto.originType,
+          originId: l.originId ?? dto.originId ?? null,
           description: l.description,
           quantity: l.quantity,
           unitPrice: l.unitPrice,
@@ -261,9 +352,10 @@ export class ReceiptsService {
       ipAddress: ip,
     });
 
-    await this.autoCreateMovement(saved, userId, ip);
+    const receiptWithLines = await this.findById(saved.id);
+    await this.autoCreateMovement(receiptWithLines, userId, ip);
 
-    return this.findById(saved.id);
+    return receiptWithLines;
   }
 
   async update(id: number, dto: Partial<CreateReceiptDto>, userId: number, ip?: string): Promise<Receipt> {

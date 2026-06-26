@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Like } from 'typeorm';
+import { Brackets, Repository, IsNull, Like } from 'typeorm';
 import { VisitorRecord } from '../database/entities/visitor-record.entity';
 import { VisitorCompanion } from '../database/entities/visitor-companion.entity';
+import { Receipt } from '../database/entities/receipt.entity';
 import { VisitReason } from '../database/entities/visit-reason.entity';
 import { VisitActivity } from '../database/entities/visit-activity.entity';
 import { VisitorCategory } from '../database/entities/visitor-category.entity';
@@ -27,6 +28,8 @@ export class VisitorsService {
     private readonly parkConfigRepo: Repository<ParkConfig>,
     @InjectRepository(Tariff)
     private readonly tariffRepo: Repository<Tariff>,
+    @InjectRepository(Receipt)
+    private readonly receiptRepo: Repository<Receipt>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -35,6 +38,42 @@ export class VisitorsService {
     const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
     if (!tariff) return null;
     return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
+  }
+
+  private async attachPaymentStatus<T extends VisitorRecord>(records: T[]): Promise<T[]> {
+    if (!records.length) return records;
+    const ids = records.map((r) => r.id);
+    const receipts = await this.receiptRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.lines', 'line')
+      .where('r.status = :status', { status: 'ACTIVO' })
+      .andWhere(new Brackets((qb) => {
+        qb.where('(r.originType = :originType AND r.originId IN (:...ids))')
+          .orWhere('(line.originType = :originType AND line.originId IN (:...ids))');
+      }))
+      .setParameters({ originType: 'VISITANTE', ids })
+      .getMany();
+
+    const receiptByRecord = new Map<number, Receipt>();
+    for (const receipt of receipts) {
+      if (receipt.originType === 'VISITANTE' && receipt.originId != null) {
+        receiptByRecord.set(Number(receipt.originId), receipt);
+      }
+      for (const line of receipt.lines ?? []) {
+        if (line.originType === 'VISITANTE' && line.originId != null) {
+          receiptByRecord.set(Number(line.originId), receipt);
+        }
+      }
+    }
+
+    return records.map((record) => {
+      const receipt = receiptByRecord.get(record.id) ?? null;
+      return Object.assign(record, {
+        isPaid: Boolean(receipt),
+        receiptId: receipt?.id ?? null,
+        receipt,
+      });
+    });
   }
 
   async findAll(query: QueryVisitorDto) {
@@ -86,9 +125,10 @@ export class VisitorsService {
     }
 
     const [data, total] = await qb.getManyAndCount();
+    const enriched = await this.attachPaymentStatus(data);
 
     return {
-      data,
+      data: enriched,
       meta: {
         page,
         limit: take,
@@ -119,7 +159,7 @@ export class VisitorsService {
     if (!record) {
       throw new NotFoundException(`Visitor record #${id} not found`);
     }
-    return record;
+    return (await this.attachPaymentStatus([record]))[0];
   }
 
   async findCurrentlyInside(page = 1, limit = 20) {
@@ -132,7 +172,7 @@ export class VisitorsService {
       skip,
       take,
     });
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async findToday(page = 1, limit = 20) {
@@ -146,7 +186,7 @@ export class VisitorsService {
       skip,
       take,
     });
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async todaySummary() {
@@ -433,6 +473,6 @@ export class VisitorsService {
       skip,
       take,
     });
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 }

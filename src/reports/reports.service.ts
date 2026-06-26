@@ -9,6 +9,7 @@ import { CashClosure } from '../database/entities/cash-closure.entity';
 import { Receipt } from '../database/entities/receipt.entity';
 import { SurveyQuestion } from '../database/entities/survey-question.entity';
 import { SurveyAnswer } from '../database/entities/survey-answer.entity';
+import { SurveyResponse } from '../database/entities/survey-response.entity';
 import { QueryReportDto } from './dto/query-report.dto';
 import { guatemalaDateRangeUtc } from '../common/utils/guatemala-time';
 
@@ -31,6 +32,8 @@ export class ReportsService {
     private readonly surveyQuestionRepo: Repository<SurveyQuestion>,
     @InjectRepository(SurveyAnswer)
     private readonly surveyAnswerRepo: Repository<SurveyAnswer>,
+    @InjectRepository(SurveyResponse)
+    private readonly surveyResponseRepo: Repository<SurveyResponse>,
   ) {}
 
   private paginate(query: QueryReportDto) {
@@ -271,6 +274,8 @@ export class ReportsService {
       });
     if (query.paymentMethodId)
       qb.andWhere('m.paymentMethodId = :pmId', { pmId: query.paymentMethodId });
+    if (query.conceptIds?.length)
+      qb.andWhere('m.conceptId IN (:...conceptIds)', { conceptIds: query.conceptIds });
 
     const [data, total] = await qb.getManyAndCount();
     return {
@@ -420,11 +425,16 @@ export class ReportsService {
     const qb = this.movementRepo
       .createQueryBuilder('m')
       .select('m.originType', 'originType')
+      .addSelect('m.conceptId', 'conceptId')
+      .addSelect('concept.name', 'conceptName')
       .addSelect('COUNT(m.id)', 'count')
       .addSelect('SUM(m.amount)', 'total')
+      .leftJoin('m.concept', 'concept')
       .where('m.movementType = :t', { t: 'INGRESO' })
       .andWhere('m.status = :s', { s: 'ACTIVO' })
-      .groupBy('m.originType');
+      .groupBy('m.originType')
+      .addGroupBy('m.conceptId')
+      .addGroupBy('concept.name');
 
     if (query.from)
       qb.andWhere('m.movementDate >= :from', {
@@ -436,15 +446,21 @@ export class ReportsService {
       });
     if (query.originTypes?.length)
       qb.andWhere('m.originType IN (:...types)', { types: query.originTypes });
+    if (query.conceptIds?.length)
+      qb.andWhere('m.conceptId IN (:...conceptIds)', { conceptIds: query.conceptIds });
 
     const raw = await qb.getRawMany<{
       originType: string;
+      conceptId: number;
+      conceptName: string | null;
       count: string;
       total: string;
     }>();
 
     const data = raw.map((r) => ({
       originType: r.originType,
+      conceptId: Number(r.conceptId),
+      conceptName: r.conceptName,
       count: Number(r.count),
       total: Number(r.total),
     }));
@@ -516,7 +532,43 @@ export class ReportsService {
       },
     );
 
-    return { data };
+    const responseQb = this.surveyResponseRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.answers', 'answers')
+      .leftJoinAndSelect('answers.question', 'question')
+      .orderBy('r.submittedAt', 'DESC')
+      .addOrderBy('question.displayOrder', 'ASC')
+      .addOrderBy('question.id', 'ASC');
+
+    if (query.from)
+      responseQb.andWhere('r.submittedAt >= :from', {
+        from: guatemalaDateRangeUtc(query.from).from,
+      });
+    if (query.to)
+      responseQb.andWhere('r.submittedAt <= :to', {
+        to: guatemalaDateRangeUtc(undefined, query.to).to,
+      });
+
+    const responses = await responseQb.getMany();
+    const details = responses.map((response) => ({
+      responseId: response.id,
+      submittedAt: response.submittedAt,
+      generalComment: response.generalComment,
+      answers: (response.answers ?? [])
+        .sort((a, b) => {
+          const orderA = a.question?.displayOrder ?? 0;
+          const orderB = b.question?.displayOrder ?? 0;
+          return orderA - orderB || a.surveyQuestionId - b.surveyQuestionId;
+        })
+        .map((answer) => ({
+          questionId: answer.surveyQuestionId,
+          question: answer.question?.text ?? `Pregunta #${answer.surveyQuestionId}`,
+          answerType: answer.question?.answerType ?? null,
+          value: answer.value,
+        })),
+    }));
+
+    return { data, details };
   }
 
   /**

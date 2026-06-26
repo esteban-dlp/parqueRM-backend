@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Like, Repository } from 'typeorm';
+import { Brackets, IsNull, Like, Repository } from 'typeorm';
 import { VehicleRecord } from '../database/entities/vehicle-record.entity';
 import { Tariff } from '../database/entities/tariff.entity';
+import { Receipt } from '../database/entities/receipt.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
@@ -16,6 +17,8 @@ export class VehiclesService {
     private readonly repo: Repository<VehicleRecord>,
     @InjectRepository(Tariff)
     private readonly tariffRepo: Repository<Tariff>,
+    @InjectRepository(Receipt)
+    private readonly receiptRepo: Repository<Receipt>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -24,6 +27,45 @@ export class VehiclesService {
     const tariff = await this.tariffRepo.findOne({ where: { id: tariffId } });
     if (!tariff) return null;
     return isForeign ? Number(tariff.amountForeign) : Number(tariff.amountLocal);
+  }
+
+  private async attachPaymentStatus<T extends VehicleRecord>(records: T[]): Promise<T[]> {
+    if (!records.length) return records;
+    const ids = records.map((r) => r.id);
+    const receipts = await this.receiptRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.lines', 'line')
+      .where('r.status = :status', { status: 'ACTIVO' })
+      .andWhere(new Brackets((qb) => {
+        qb.where('(r.originType = :vehicleOriginType AND r.originId IN (:...ids))')
+          .orWhere('(line.originType = :vehicleOriginType AND line.originId IN (:...ids))');
+      }))
+      .setParameters({
+        vehicleOriginType: 'VEHICULO',
+        ids,
+      })
+      .getMany();
+
+    const receiptByRecord = new Map<number, Receipt>();
+    for (const receipt of receipts) {
+      if (receipt.originType === 'VEHICULO' && receipt.originId != null) {
+        receiptByRecord.set(Number(receipt.originId), receipt);
+      }
+      for (const line of receipt.lines ?? []) {
+        if (line.originType === 'VEHICULO' && line.originId != null) {
+          receiptByRecord.set(Number(line.originId), receipt);
+        }
+      }
+    }
+
+    return records.map((record) => {
+      const receipt = receiptByRecord.get(record.id) ?? null;
+      return Object.assign(record, {
+        isPaid: Boolean(receipt),
+        receiptId: receipt?.id ?? null,
+        receipt,
+      });
+    });
   }
 
   async findAll(query: QueryVehicleDto) {
@@ -49,6 +91,9 @@ export class VehiclesService {
     if (query.vehicleTypeId) {
       qb.andWhere('vr.vehicleTypeId = :typeId', { typeId: query.vehicleTypeId });
     }
+    if (query.visitorRecordId) {
+      qb.andWhere('vr.visitorRecordId = :visitorRecordId', { visitorRecordId: query.visitorRecordId });
+    }
     if (query.parked === 'true') {
       qb.andWhere('vr.checkOutAt IS NULL');
     }
@@ -62,7 +107,7 @@ export class VehiclesService {
     }
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async findById(id: number): Promise<VehicleRecord> {
@@ -71,7 +116,7 @@ export class VehiclesService {
       relations: ['vehicleType', 'tariff', 'visitorRecord', 'createdByUser'],
     });
     if (!record) throw new NotFoundException(`Vehicle record #${id} not found`);
-    return record;
+    return (await this.attachPaymentStatus([record]))[0];
   }
 
   async findCurrentlyParked(page = 1, limit = 20) {
@@ -83,7 +128,7 @@ export class VehiclesService {
       skip: (page - 1) * take,
       take,
     });
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async findToday(page = 1, limit = 20) {
@@ -97,7 +142,7 @@ export class VehiclesService {
       .skip((page - 1) * take)
       .take(take);
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 
   async todaySummary() {
@@ -265,6 +310,6 @@ export class VehiclesService {
       skip: (page - 1) * take,
       take,
     });
-    return { data, meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
+    return { data: await this.attachPaymentStatus(data), meta: { page, limit: take, total, totalPages: Math.ceil(total / take) } };
   }
 }

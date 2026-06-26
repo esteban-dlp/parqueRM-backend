@@ -180,10 +180,26 @@ export class CatalogsService {
 
   // ─── Municipalities ────────────────────────────────────────────────────────
   findAllMunicipalities(page = 1, limit = 20) {
-    return this.genericFindAll(this.municipalityRepo, page, limit, undefined, {
-      department: { name: 'ASC' },
-      name: 'ASC',
-    });
+    const take = this.clampLimit(limit);
+    const skip = (page - 1) * take;
+    return this.municipalityRepo
+      .findAndCount({
+        where: { deletedAt: IsNull() } as any,
+        relations: ['department'],
+        order: {
+          department: { name: 'ASC' },
+          name: 'ASC',
+        } as any,
+        skip,
+        take,
+      })
+      .then(([items, total]) => ({
+        items,
+        total,
+        page,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      }));
   }
   findMunicipalityById(id: number) {
     return this.municipalityRepo.findOne({ where: { id, deletedAt: IsNull() } as any, relations: ['department'] }).then((m) => {
@@ -196,6 +212,7 @@ export class CatalogsService {
     const skip = (page - 1) * take;
     const [items, total] = await this.municipalityRepo.findAndCount({
       where: { departmentId, deletedAt: IsNull() } as any,
+      relations: ['department'],
       order: { name: 'ASC' } as any,
       skip,
       take,

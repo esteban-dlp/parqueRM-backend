@@ -1,8 +1,9 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { existsSync, readFileSync } from 'fs';
 import { networkInterfaces } from 'os';
 import { join } from 'path';
+import type { Request } from 'express';
 import {
   HealthCheck,
   HealthCheckService,
@@ -41,19 +42,29 @@ export class HealthController {
   @Get('local-access')
   @Public()
   @ApiOperation({ summary: 'Current LAN access URL for local network users' })
-  localAccess() {
+  localAccess(@Req() req: Request) {
     const ips = this.getUsefulLanAddresses();
     const primaryIp = ips[0]?.ip ?? null;
-    const loginUrl = primaryIp ? `http://${primaryIp}/login` : null;
+    const detectedUrl = primaryIp ? `http://${primaryIp}` : null;
+    const configuredUrl = this.normalizeConfiguredBaseUrl(
+      process.env.SYSTEM_LAN_URL,
+      process.env.FRONTEND_PORT,
+    );
+    const requestUrl = this.resolveRequestBaseUrl(req);
+    const url = configuredUrl ?? requestUrl ?? detectedUrl;
+    const loginUrl = url ? `${url}/login` : null;
 
     return {
       app: 'ParqueRM',
-      status: primaryIp ? 'ok' : 'unavailable',
+      status: url ? 'ok' : 'unavailable',
       version: this.appVersion,
       instanceId: process.env.PARQUERM_INSTANCE_ID ?? 'unknown',
       primaryIp,
-      url: primaryIp ? `http://${primaryIp}` : null,
+      url,
       loginUrl,
+      detectedUrl,
+      configuredUrl,
+      requestUrl,
       ips,
       timestamp: new Date().toISOString(),
     };
@@ -65,6 +76,55 @@ export class HealthController {
   @ApiOperation({ summary: 'Database connectivity health check' })
   checkDatabase() {
     return this.health.check([() => this.db.pingCheck('database')]);
+  }
+
+  private normalizeBaseUrl(value: string | undefined): string | null {
+    const trimmed = value?.trim();
+    if (!trimmed) return null;
+    return trimmed.replace(/\/+$/, '');
+  }
+
+  private normalizeConfiguredBaseUrl(
+    value: string | undefined,
+    frontendPort: string | undefined,
+  ): string | null {
+    const baseUrl = this.normalizeBaseUrl(value);
+    if (!baseUrl) return null;
+    return this.addPortIfNeeded(baseUrl, frontendPort);
+  }
+
+  private addPortIfNeeded(baseUrl: string, frontendPort: string | undefined): string {
+    const cleanPort = frontendPort?.trim();
+    if (!cleanPort || cleanPort === '80' || cleanPort === '443') return baseUrl;
+
+    const portNumber = Number(cleanPort);
+    if (!Number.isInteger(portNumber) || portNumber <= 0) return baseUrl;
+
+    try {
+      const url = new URL(baseUrl);
+      if (url.port) return baseUrl;
+      if ((url.protocol === 'http:' && cleanPort === '80') || (url.protocol === 'https:' && cleanPort === '443')) {
+        return baseUrl;
+      }
+      url.port = cleanPort;
+      return url.toString().replace(/\/+$/, '');
+    } catch {
+      return baseUrl;
+    }
+  }
+
+  private resolveRequestBaseUrl(req: Request): string | null {
+    const host = this.firstHeaderValue(req.headers['x-forwarded-host'] ?? req.headers.host);
+    if (!host) return null;
+
+    const proto = this.firstHeaderValue(req.headers['x-forwarded-proto']) ?? req.protocol ?? 'http';
+    return `${proto}://${host}`;
+  }
+
+  private firstHeaderValue(value: string | string[] | undefined): string | null {
+    const raw = Array.isArray(value) ? value[0] : value;
+    const first = raw?.split(',')[0]?.trim();
+    return first || null;
   }
 
   private resolveVersion(): string {

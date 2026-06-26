@@ -3,6 +3,21 @@ import { IsArray, IsInt, IsOptional, IsString } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
+function toStringArray(value: unknown): string[] {
+  if (value == null || value === '') return [];
+  const values = Array.isArray(value) ? value : [value];
+  return values
+    .flatMap((item) => String(item).split(','))
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toNumberArray(value: unknown): number[] {
+  return toStringArray(value)
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item > 0);
+}
+
 export class QueryReportDto extends PaginationDto {
   @ApiPropertyOptional({ description: 'Start date (ISO string)' })
   @IsOptional()
@@ -61,9 +76,17 @@ export class QueryReportDto extends PaginationDto {
   })
   @IsOptional()
   @IsArray()
-  @Transform(({ value }: { value: unknown }): unknown[] =>
-    Array.isArray(value) ? value : [value],
-  )
+  @Transform(({ value }: { value: unknown }): string[] => toStringArray(value))
   @IsString({ each: true })
   originTypes?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Financial concept ids to filter income reports by. Omit for all.',
+    type: [Number],
+  })
+  @IsOptional()
+  @IsArray()
+  @Transform(({ value }: { value: unknown }): number[] => toNumberArray(value))
+  @IsInt({ each: true })
+  conceptIds?: number[];
 }

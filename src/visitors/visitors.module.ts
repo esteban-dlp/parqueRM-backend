@@ -13,6 +13,7 @@ import { InfoSource } from '../database/entities/info-source.entity';
 import { Tariff } from '../database/entities/tariff.entity';
 import { ParkConfig } from '../database/entities/park-config.entity';
 import { Receipt } from '../database/entities/receipt.entity';
+import { FinancialMovement } from '../database/entities/financial-movement.entity';
 import { AuditModule } from '../audit/audit.module';
 import { VisitorsService } from './visitors.service';
 import { VisitorsController } from './visitors.controller';
@@ -33,6 +34,7 @@ import { VisitorsController } from './visitors.controller';
       Tariff,
       ParkConfig,
       Receipt,
+      FinancialMovement,
     ]),
     AuditModule,
   ],

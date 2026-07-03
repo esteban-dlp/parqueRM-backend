@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, IsNull, Like } from 'typeorm';
 import { VisitorRecord } from '../database/entities/visitor-record.entity';
 import { VisitorCompanion } from '../database/entities/visitor-companion.entity';
 import { Receipt } from '../database/entities/receipt.entity';
+import { FinancialMovement } from '../database/entities/financial-movement.entity';
 import { VisitReason } from '../database/entities/visit-reason.entity';
 import { VisitActivity } from '../database/entities/visit-activity.entity';
 import { VisitorCategory } from '../database/entities/visitor-category.entity';
@@ -30,8 +31,26 @@ export class VisitorsService {
     private readonly tariffRepo: Repository<Tariff>,
     @InjectRepository(Receipt)
     private readonly receiptRepo: Repository<Receipt>,
+    @InjectRepository(FinancialMovement)
+    private readonly movementRepo: Repository<FinancialMovement>,
     private readonly auditService: AuditService,
   ) {}
+
+  private async assertEditable(record: VisitorRecord): Promise<void> {
+    if ((record as VisitorRecord & { isPaid?: boolean }).isPaid || record.checkOutAt) {
+      throw new BadRequestException('No se puede editar un registro ya cobrado. Debe anularse o registrarse un ajuste.');
+    }
+
+    const movement = await this.movementRepo
+      .createQueryBuilder('m')
+      .where('m.originType = :originType', { originType: 'VISITANTE' })
+      .andWhere('m.originId = :originId', { originId: record.id })
+      .andWhere('(m.status = :status OR m.cashClosureId IS NOT NULL)', { status: 'ACTIVO' })
+      .getOne();
+    if (movement) {
+      throw new BadRequestException('No se puede editar un registro ya cobrado. Debe anularse o registrarse un ajuste.');
+    }
+  }
 
   private async resolvedTariffAmount(tariffId: number | null, isForeign = false): Promise<number | null> {
     if (!tariffId) return null;
@@ -322,6 +341,7 @@ export class VisitorsService {
 
   async update(id: number, dto: UpdateVisitorDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VisitorRecord> {
     const record = await this.findById(id);
+    await this.assertEditable(record);
     const old = { ...record };
 
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');

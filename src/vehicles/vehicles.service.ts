@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, IsNull, Like, Repository } from 'typeorm';
 import { VehicleRecord } from '../database/entities/vehicle-record.entity';
 import { Tariff } from '../database/entities/tariff.entity';
 import { Receipt } from '../database/entities/receipt.entity';
+import { FinancialMovement } from '../database/entities/financial-movement.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
@@ -19,8 +20,26 @@ export class VehiclesService {
     private readonly tariffRepo: Repository<Tariff>,
     @InjectRepository(Receipt)
     private readonly receiptRepo: Repository<Receipt>,
+    @InjectRepository(FinancialMovement)
+    private readonly movementRepo: Repository<FinancialMovement>,
     private readonly auditService: AuditService,
   ) {}
+
+  private async assertEditable(record: VehicleRecord): Promise<void> {
+    if ((record as VehicleRecord & { isPaid?: boolean }).isPaid || record.checkOutAt) {
+      throw new BadRequestException('No se puede editar un registro ya cobrado. Debe anularse o registrarse un ajuste.');
+    }
+
+    const movement = await this.movementRepo
+      .createQueryBuilder('m')
+      .where('m.originType = :originType', { originType: 'VEHICULO' })
+      .andWhere('m.originId = :originId', { originId: record.id })
+      .andWhere('(m.status = :status OR m.cashClosureId IS NOT NULL)', { status: 'ACTIVO' })
+      .getOne();
+    if (movement) {
+      throw new BadRequestException('No se puede editar un registro ya cobrado. Debe anularse o registrarse un ajuste.');
+    }
+  }
 
   private async resolvedTariffAmount(tariffId: number | null, isForeign = false): Promise<number | null> {
     if (!tariffId) return null;
@@ -210,6 +229,7 @@ export class VehiclesService {
 
   async update(id: number, dto: UpdateVehicleDto, userId: number, ip: string, userPermissions: string[] = []): Promise<VehicleRecord> {
     const record = await this.findById(id);
+    await this.assertEditable(record);
     const old = { ...record };
 
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');

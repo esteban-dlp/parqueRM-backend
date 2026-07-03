@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { LodgingRecord } from '../database/entities/lodging-record.entity';
 import { Tariff } from '../database/entities/tariff.entity';
 import { Receipt } from '../database/entities/receipt.entity';
+import { FinancialMovement } from '../database/entities/financial-movement.entity';
 import { AuditService } from '../audit/audit.service';
 import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
@@ -19,8 +20,26 @@ export class LodgingService {
     private readonly tariffRepo: Repository<Tariff>,
     @InjectRepository(Receipt)
     private readonly receiptRepo: Repository<Receipt>,
+    @InjectRepository(FinancialMovement)
+    private readonly movementRepo: Repository<FinancialMovement>,
     private readonly auditService: AuditService,
   ) {}
+
+  private async assertEditable(record: LodgingRecord): Promise<void> {
+    if ((record as LodgingRecord & { isPaid?: boolean }).isPaid) {
+      throw new BadRequestException('No se puede editar un registro ya cobrado. Debe anularse o registrarse un ajuste.');
+    }
+
+    const movement = await this.movementRepo
+      .createQueryBuilder('m')
+      .where('m.originType = :originType', { originType: 'HOSPEDAJE' })
+      .andWhere('m.originId = :originId', { originId: record.id })
+      .andWhere('(m.status = :status OR m.cashClosureId IS NOT NULL)', { status: 'ACTIVO' })
+      .getOne();
+    if (movement) {
+      throw new BadRequestException('No se puede editar un registro ya cobrado. Debe anularse o registrarse un ajuste.');
+    }
+  }
 
   private async resolvedTariffAmount(tariffId: number | null, isForeign = false): Promise<number | null> {
     if (!tariffId) return null;
@@ -196,6 +215,7 @@ export class LodgingService {
 
   async update(id: number, dto: UpdateLodgingDto, userId: number, ip: string, userPermissions: string[] = []): Promise<LodgingRecord> {
     const record = await this.findById(id);
+    await this.assertEditable(record);
     const old = { ...record };
 
     const canOverrideTariff = userPermissions.includes('TARIFF_OVERRIDE');

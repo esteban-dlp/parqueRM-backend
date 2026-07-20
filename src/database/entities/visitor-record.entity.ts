@@ -84,6 +84,12 @@ export class VisitorRecord {
   @Column({ name: 'full_name', type: 'varchar', length: 150, nullable: true })
   fullName!: string | null;
 
+  @Column({ name: 'origin_detail', type: 'varchar', length: 250, nullable: true })
+  originDetail!: string | null;
+
+  @Column({ name: 'responsible_phone', type: 'varchar', length: 25, nullable: true })
+  responsiblePhone!: string | null;
+
   @Column({ name: 'email', type: 'varchar', length: 150, nullable: true })
   email!: string | null;
 

@@ -230,8 +230,9 @@ export class LodgingService {
         ? dto.appliedRate
         : ((await this.resolvedTariffAmount(record.tariffId, record.isForeign)) ?? dto.appliedRate);
     }
-    if (dto.totalAmount !== undefined) record.totalAmount = dto.totalAmount;
     if (dto.observations !== undefined) record.observations = dto.observations ?? null;
+    // El total siempre se deriva de noches × tarifa aplicada
+    record.totalAmount = parseFloat((Number(record.nights) * Number(record.appliedRate)).toFixed(2));
     record.updatedAt = new Date();
     await this.repo.save(record);
     await this.auditService.record({

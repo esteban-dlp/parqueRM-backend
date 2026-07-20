@@ -276,6 +276,8 @@ export class VisitorsService {
       identificationType: dto.identificationType ?? null,
       identificationNumber: dto.identificationNumber ?? null,
       fullName: dto.fullName ?? null,
+      originDetail: dto.originDetail ?? null,
+      responsiblePhone: dto.responsiblePhone ?? null,
       email: dto.email ?? null,
       gender: dto.gender ?? null,
       ageRange: dto.ageRange ?? null,
@@ -365,6 +367,8 @@ export class VisitorsService {
     if (dto.identificationType !== undefined) record.identificationType = dto.identificationType ?? null;
     if (dto.identificationNumber !== undefined) record.identificationNumber = dto.identificationNumber ?? null;
     if (dto.fullName !== undefined) record.fullName = dto.fullName ?? null;
+    if (dto.originDetail !== undefined) record.originDetail = dto.originDetail ?? null;
+    if (dto.responsiblePhone !== undefined) record.responsiblePhone = dto.responsiblePhone ?? null;
     if (dto.email !== undefined) record.email = dto.email ?? null;
     if (dto.gender !== undefined) record.gender = dto.gender ?? null;
     if (dto.ageRange !== undefined) record.ageRange = dto.ageRange ?? null;

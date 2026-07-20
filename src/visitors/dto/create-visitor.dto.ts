@@ -6,6 +6,8 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -101,6 +103,18 @@ export class CreateVisitorDto {
   @IsOptional()
   @IsString()
   fullName?: string;
+
+  @ApiPropertyOptional({ description: 'Detalle de procedencia (estado, ciudad, provincia) cuando el país no es Guatemala', maxLength: 250 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(250)
+  originDetail?: string;
+
+  @ApiPropertyOptional({ description: 'Teléfono del visitante responsable', maxLength: 25 })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9+()\-\s]{6,25}$/, { message: 'El teléfono del visitante responsable no es válido' })
+  responsiblePhone?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
